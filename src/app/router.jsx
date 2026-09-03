@@ -6,6 +6,7 @@ import { ROUTE_PERMISSIONS } from "@/config/navigation";
 import { ROLES } from "@/auth/roles";
 import { RequireAuth, RequirePermission, RequireRole, RoleHomeRedirect } from "./guards";
 import NotFoundPage from "@/features/misc/NotFoundPage";
+import RouteErrorPage from "@/features/misc/RouteErrorPage";
 
 const SignInPage = lazy(() => import("@/auth/SignInPage"));
 
@@ -53,10 +54,15 @@ const lazyPage = (Component) => (
   </Suspense>
 );
 
-/** A role's own dashboard — only that role may open it. */
+/**
+ * Child routes carry their own errorElement so a crash renders inside the
+ * app shell — the sidebar and top bar stay usable instead of the whole
+ * layout being replaced by an error screen.
+ */
 const roleDashboard = (path, role, Component) => ({
   path,
   element: <RequireRole role={role}>{lazyPage(Component)}</RequireRole>,
+  errorElement: <RouteErrorPage />,
 });
 
 /** A protected route: permission from the central map, then the screen. */
@@ -67,12 +73,14 @@ const guarded = (path, Component) => ({
       {lazyPage(Component)}
     </RequirePermission>
   ),
+  errorElement: <RouteErrorPage />,
 });
 
 export const router = createBrowserRouter([
   {
     path: "/sign-in",
     element: lazyPage(SignInPage),
+    errorElement: <RouteErrorPage />,
   },
   {
     path: "/",
@@ -81,7 +89,7 @@ export const router = createBrowserRouter([
         <AppLayout />
       </RequireAuth>
     ),
-    errorElement: <NotFoundPage />,
+    errorElement: <RouteErrorPage />,
     children: [
       { index: true, element: <RoleHomeRedirect /> },
 
@@ -104,6 +112,7 @@ export const router = createBrowserRouter([
             {lazyPage(PatientDetailPage)}
           </RequirePermission>
         ),
+        errorElement: <RouteErrorPage />,
       },
       guarded("/recalls", RecallsPage),
       guarded("/treatments", TreatmentsPage),

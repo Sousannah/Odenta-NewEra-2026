@@ -1,4 +1,4 @@
-import { Navigate, useLocation } from "react-router-dom";
+import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { ShieldOff } from "lucide-react";
 import { useAuth } from "@/auth/AuthContext";
 import { ROLE_META, roleHome } from "@/auth/roles";
@@ -36,6 +36,7 @@ export function RequireAuth({ children }) {
  */
 export function RequirePermission({ permission, children }) {
   const { can, role } = useAuth();
+  const navigate = useNavigate();
 
   if (can(permission)) return children;
 
@@ -46,7 +47,7 @@ export function RequirePermission({ permission, children }) {
         title="You do not have access to this screen"
         description={`The ${ROLE_META[role]?.label ?? "current"} role cannot open this section. Ask an owner or manager if you need it.`}
         action={
-          <Button as="a" href={roleHome(role)}>
+          <Button onClick={() => navigate(roleHome(role), { replace: true })}>
             Back to my dashboard
           </Button>
         }
