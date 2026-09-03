@@ -1,12 +1,17 @@
 /** Domain vocabulary shared by screens — independent of where data comes from. */
 
 export const APPOINTMENT_STATUS = {
-  registered: { label: "Registered", tone: "info" },
-  encounter: { label: "Encounter", tone: "warning" },
-  waiting: { label: "Waiting Payment", tone: "warning" },
-  finished: { label: "Finished", tone: "success" },
-  cancelled: { label: "Cancelled", tone: "danger" },
+  registered: { label: "Registered", tone: "info", step: 0 },
+  arrived: { label: "Arrived", tone: "brand", step: 1 },
+  encounter: { label: "Encounter", tone: "warning", step: 2 },
+  waiting: { label: "Waiting Payment", tone: "warning", step: 3 },
+  finished: { label: "Finished", tone: "success", step: 4 },
+  cancelled: { label: "Cancelled", tone: "danger", step: -1 },
+  no_show: { label: "No show", tone: "neutral", step: -1 },
 };
+
+/** The order a visit moves through, used by status pickers and progress bars. */
+export const APPOINTMENT_FLOW = ["registered", "arrived", "encounter", "waiting", "finished"];
 
 export const TREATMENT_CATEGORIES = [
   "Medical",

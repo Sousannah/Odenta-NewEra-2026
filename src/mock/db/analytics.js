@@ -1,7 +1,14 @@
+import { format, subDays } from "date-fns";
+
+const iso = (date) => format(date, "yyyy-MM-dd");
+const today = new Date();
+
+/* ---------------------------------------------------------- shared series */
+
 export const cashflow = {
   total: 13232,
   change: 4.51,
-  range: "January 2022 - December 2022",
+  range: `${format(subDays(today, 335), "MMMM yyyy")} - ${format(today, "MMMM yyyy")}`,
   series: [
     { month: "JAN", value: 2100, total: 210897 },
     { month: "FEB", value: 2450, total: 268431 },
@@ -44,11 +51,7 @@ export const incomeExpense = {
   ],
 };
 
-export const patientsSplit = {
-  newPatients: 21,
-  returningPatients: 142,
-  range: "This month",
-};
+export const patientsSplit = { newPatients: 21, returningPatients: 142, range: "This month" };
 
 export const popularTreatments = [
   { name: "Scaling Teeth", rating: 4.7 },
@@ -57,12 +60,12 @@ export const popularTreatments = [
 ];
 
 export const stockAvailability = {
-  totalAsset: 53000,
-  totalProduct: 442,
+  totalAsset: 10200323,
+  totalProduct: 32,
   segments: [
-    { name: "Available", value: 331, color: "#13CACA" },
-    { name: "Low Stock", value: 78, color: "#FCB900" },
-    { name: "Out of stock", value: 33, color: "#FE3D75" },
+    { name: "Available", value: 21, color: "#13CACA" },
+    { name: "Low Stock", value: 5, color: "#FCB900" },
+    { name: "Out of stock", value: 6, color: "#FE3D75" },
   ],
   lowStock: [
     { name: "Dental Brush", quantity: 3 },
@@ -70,13 +73,148 @@ export const stockAvailability = {
   ],
 };
 
-export const salesSummary = {
-  revenue: { total: 154, change: -43 },
-  profit: { total: 154, change: -43 },
-  range: "1 May 2022 - 30 May 2022",
+/* ------------------------------------------------------------- per role */
+
+export const ownerDashboard = {
+  kpis: {
+    revenue: { total: 84210, change: 8.1 },
+    profit: { total: 31840, change: 6.4 },
+    chairUtilisation: { total: 78, change: 5.6 },
+    activePatients: { total: 412, change: 3.9 },
+  },
+  cashflow,
+  expenses,
+  incomeExpense,
+  patients: patientsSplit,
+  popularTreatments,
+  stock: stockAvailability,
+  byDentist: [
+    { name: "Mactavish", appointments: 92, revenue: 28400, utilisation: 84 },
+    { name: "O'Hara", appointments: 71, revenue: 21100, utilisation: 76 },
+    { name: "Larasati", appointments: 58, revenue: 19800, utilisation: 71 },
+    { name: "Voss", appointments: 47, revenue: 14910, utilisation: 63 },
+  ],
+  branches: [
+    { id: "CLN-01", name: "Avicena Clinic", revenue: 62410, appointments: 198, utilisation: 81 },
+    { id: "CLN-02", name: "Avicena Downtown", revenue: 21800, appointments: 70, utilisation: 64 },
+  ],
 };
 
+export const managerDashboard = {
+  kpis: {
+    todayAppointments: { total: 13, change: 8.3 },
+    utilisation: { total: 78, change: 5.6 },
+    noShowRate: { total: 7.7, change: -1.4 },
+    openBills: { total: 4996, change: -3.2 },
+  },
+  coverage: [
+    { dentist: "Drg Soap Mactavish", booked: 5, capacity: 8, gaps: 2 },
+    { dentist: "Drg Jerald O'Hara", booked: 3, capacity: 8, gaps: 3 },
+    { dentist: "Drg Putri Larasati", booked: 2, capacity: 6, gaps: 2 },
+    { dentist: "Drg Amara Voss", booked: 3, capacity: 8, gaps: 4 },
+  ],
+  weekly: [
+    { day: "Mon", appointments: 38, revenue: 9200 },
+    { day: "Tue", appointments: 44, revenue: 11400 },
+    { day: "Wed", appointments: 51, revenue: 13800 },
+    { day: "Thu", appointments: 42, revenue: 12100 },
+    { day: "Fri", appointments: 47, revenue: 14600 },
+    { day: "Sat", appointments: 33, revenue: 10300 },
+    { day: "Sun", appointments: 13, revenue: 4200 },
+  ],
+  stock: stockAvailability,
+};
+
+export const dentistDashboard = {
+  kpis: {
+    todayPatients: { total: 5, change: 0 },
+    completed: { total: 1, change: 0 },
+    plansAwaitingConsent: { total: 1, change: 0 },
+    labCasesDue: { total: 2, change: 0 },
+  },
+  productionSeries: [
+    { day: "Mon", production: 2400, target: 2600 },
+    { day: "Tue", production: 3100, target: 2600 },
+    { day: "Wed", production: 2800, target: 2600 },
+    { day: "Thu", production: 2200, target: 2600 },
+    { day: "Fri", production: 3400, target: 2600 },
+  ],
+  caseMix: [
+    { name: "Restorative", value: 38 },
+    { name: "Endodontics", value: 21 },
+    { name: "Preventive", value: 18 },
+    { name: "Surgery", value: 12 },
+    { name: "Prosthodontics", value: 7 },
+  ],
+};
+
+export const assistantDashboard = {
+  kpis: {
+    roomsToTurn: { total: 1, change: 0 },
+    cyclesToday: { total: 3, change: 0 },
+    lowStockItems: { total: 4, change: 0 },
+    pendingSporeTest: { total: 1, change: 0 },
+  },
+};
+
+export const receptionDashboard = {
+  kpis: {
+    arrivalsToday: { total: 13, change: 0 },
+    checkedIn: { total: 6, change: 0 },
+    waitlist: { total: 3, change: 0 },
+    outstanding: { total: 4996, change: -3.2 },
+  },
+  hourlyArrivals: [
+    { hour: "08", booked: 1, arrived: 0 },
+    { hour: "09", booked: 2, arrived: 2 },
+    { hour: "10", booked: 2, arrived: 2 },
+    { hour: "11", booked: 1, arrived: 1 },
+    { hour: "12", booked: 1, arrived: 1 },
+    { hour: "13", booked: 1, arrived: 0 },
+    { hour: "14", booked: 2, arrived: 1 },
+    { hour: "15", booked: 1, arrived: 1 },
+    { hour: "16", booked: 2, arrived: 0 },
+    { hour: "17", booked: 1, arrived: 0 },
+  ],
+};
+
+export const accountantDashboard = {
+  kpis: {
+    revenue: { total: 24310, change: 12.4 },
+    collected: { total: 3547, change: 5.6 },
+    outstanding: { total: 4996, change: -3.2 },
+    purchases: { total: 7050, change: 2.8 },
+  },
+  incomeExpense,
+  expenses,
+  ageing: [
+    { bucket: "0–30 days", value: 2841 },
+    { bucket: "31–60 days", value: 1320 },
+    { bucket: "61–90 days", value: 560 },
+    { bucket: "90+ days", value: 275 },
+  ],
+};
+
+export const labDashboard = {
+  kpis: {
+    openCases: { total: 4, change: 0 },
+    dueThisWeek: { total: 3, change: 0 },
+    remakes: { total: 1, change: 0 },
+    turnaroundDays: { total: 6.4, change: -0.6 },
+  },
+  byType: [
+    { name: "Crown", value: 12 },
+    { name: "Denture", value: 8 },
+    { name: "Veneer", value: 6 },
+    { name: "Retainer", value: 5 },
+    { name: "Night guard", value: 3 },
+  ],
+};
+
+/* ------------------------------------------------------------- reporting */
+
 export const reportMetrics = {
+  generatedAt: iso(today),
   appointments: { total: 268, change: 12.4 },
   revenue: { total: 84210, change: 8.1 },
   newPatients: { total: 63, change: -3.2 },
@@ -95,13 +233,20 @@ export const reportMetrics = {
     { name: "Larasati", appointments: 58, revenue: 19800 },
     { name: "Voss", appointments: 47, revenue: 14910 },
   ],
-  weekly: [
-    { day: "Mon", appointments: 38, revenue: 9200 },
-    { day: "Tue", appointments: 44, revenue: 11400 },
-    { day: "Wed", appointments: 51, revenue: 13800 },
-    { day: "Thu", appointments: 42, revenue: 12100 },
-    { day: "Fri", appointments: 47, revenue: 14600 },
-    { day: "Sat", appointments: 33, revenue: 10300 },
-    { day: "Sun", appointments: 13, revenue: 4200 },
-  ],
+  weekly: managerDashboard.weekly,
+  clinical: {
+    cariesRiskSplit: [
+      { name: "Low", value: 168, color: "#47B889" },
+      { name: "Moderate", value: 142, color: "#61B1FF" },
+      { name: "High", value: 84, color: "#F7BA21" },
+      { name: "Extreme", value: 18, color: "#E45689" },
+    ],
+    recallCompliance: 72,
+    perioStages: [
+      { name: "Stage I", value: 46 },
+      { name: "Stage II", value: 38 },
+      { name: "Stage III", value: 21 },
+      { name: "Stage IV", value: 7 },
+    ],
+  },
 };

@@ -3,11 +3,12 @@ import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
 import { useAsync, useLocalStorage } from "@/hooks";
 import { clinicService } from "@/services";
+import { useAuth } from "@/auth/AuthContext";
 
 export function AppLayout() {
   const [collapsed, setCollapsed] = useLocalStorage("odenta.sidebar.collapsed", false);
+  const { user, role } = useAuth();
   const { data: clinic } = useAsync(() => clinicService.getClinic(), []);
-  const { data: user } = useAsync(() => clinicService.getCurrentUser(), []);
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-canvas">
@@ -20,7 +21,8 @@ export function AppLayout() {
       <div className="flex min-w-0 flex-1 flex-col">
         <Topbar user={user} />
         <main className="min-h-0 flex-1 overflow-y-auto">
-          <Outlet context={{ clinic, user }} />
+          {/* role is in the key so a role switch remounts the screen cleanly */}
+          <Outlet key={role} context={{ clinic, user, role }} />
         </main>
       </div>
     </div>

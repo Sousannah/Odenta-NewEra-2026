@@ -70,7 +70,7 @@ function LineGroup({ icon, title, total, items }) {
 /* ------------------------------------------------------- history & notes */
 
 function HistoryPanel({ billId, onClose }) {
-  const { data: comments = [] } = useAsync(
+  const { data: comments = [], refetch } = useAsync(
     () => financeService.getBillComments(billId),
     [billId],
     []
@@ -106,9 +106,11 @@ function HistoryPanel({ billId, onClose }) {
               size="sm"
               className="mt-2.5"
               disabled={!draft.trim()}
-              onClick={() => {
+              onClick={async () => {
+                await financeService.addBillComment(billId, { body: draft });
                 toast.success("Comment added");
                 setDraft("");
+                refetch();
               }}
             >
               Add comment
@@ -173,6 +175,8 @@ export function BillPaymentModal({ open, onClose, bill }) {
   const [amount, setAmount] = useState("");
   const [showHistory, setShowHistory] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
+  const [paying, setPaying] = useState(false);
+  const toast = useToast();
 
   const { data: methods = [] } = useAsync(() => financeService.getPaymentMethods(), [], []);
   const { data: accounts = [] } = useAsync(() => financeService.getAccounts(), [], []);
@@ -461,7 +465,23 @@ export function BillPaymentModal({ open, onClose, bill }) {
                   block
                   className="mt-5"
                   disabled={Number(amount) < subtotal}
-                  onClick={() => setStage("success")}
+                  loading={paying}
+                  onClick={async () => {
+                    setPaying(true);
+                    try {
+                      await financeService.takePayment({
+                        billId: bill.id,
+                        amount: Number(amount),
+                        method: method?.name,
+                        account: accounts[0]?.name,
+                      });
+                      setStage("success");
+                    } catch (cause) {
+                      toast.error("Payment failed", cause.message);
+                    } finally {
+                      setPaying(false);
+                    }
+                  }}
                 >
                   Pay
                 </Button>

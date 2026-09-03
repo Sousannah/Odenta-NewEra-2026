@@ -5,6 +5,8 @@ import { useToast } from "@/components/ui/Toast";
 import { financeService } from "@/services";
 import { formatDate, formatMoney } from "@/lib/format";
 import { PURCHASE_STATUSES } from "@/config/domain";
+import { P } from "@/auth/permissions";
+import { useAuth } from "@/auth/AuthContext";
 import { DataTable } from "@/components/ui/DataTable";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -65,8 +67,8 @@ function PurchaseFormModal({ open, onClose }) {
           </Field>
         </div>
         <Field label="Charge to account">
-          <Select defaultValue="Stock fund">
-            {["Free cash", "Drug purchase", "Treatment fund", "Stock fund"].map((option) => (
+          <Select defaultValue="Stock Fund">
+            {["Free Cash", "Drug Purchase", "Treatment Fund", "Stock Fund"].map((option) => (
               <option key={option}>{option}</option>
             ))}
           </Select>
@@ -77,12 +79,13 @@ function PurchaseFormModal({ open, onClose }) {
 }
 
 export default function PurchasesPage() {
+  const { can } = useAuth();
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
   const form = useDisclosure();
 
   const { data: purchases = [], loading } = useAsync(
-    () => financeService.getPurchases({ status, query }),
+    () => financeService.getPurchases({ status, q: query }),
     [status, query],
     []
   );
@@ -100,7 +103,12 @@ export default function PurchasesPage() {
       header: "Category",
       render: (row) => <Badge tone="neutral">{row.category}</Badge>,
     },
-    { key: "orderDate", header: "Order date", sortable: true, render: (row) => formatDate(row.orderDate) },
+    {
+      key: "orderDate",
+      header: "Order date",
+      sortable: true,
+      render: (row) => formatDate(row.orderDate),
+    },
     { key: "dueDate", header: "Due date", sortable: true, render: (row) => formatDate(row.dueDate) },
     { key: "items", header: "Items", align: "center" },
     { key: "account", header: "Account" },
@@ -128,22 +136,28 @@ export default function PurchasesPage() {
             <Button variant="secondary" leftIcon={<Download className="h-4 w-4" />}>
               Export
             </Button>
-            <Button leftIcon={<Plus className="h-4 w-4" />} onClick={form.open}>
-              New purchase
-            </Button>
+            {can(P.PURCHASE_MANAGE) ? (
+              <Button leftIcon={<Plus className="h-4 w-4" />} onClick={form.open}>
+                New purchase
+              </Button>
+            ) : null}
           </>
         }
       />
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard label="Total spend" value={formatMoney(totalSpend)} icon={<Download className="h-5 w-5" />} />
+        <StatCard
+          label="Total spend"
+          value={formatMoney(totalSpend)}
+          icon={<Download className="h-5 w-5" />}
+        />
         <StatCard
           label="Orders in transit"
           value={inTransit}
           tone="warning"
           icon={<Truck className="h-5 w-5" />}
         />
-        <StatCard label="Orders this month" value={purchases.length} tone="success" />
+        <StatCard label="Orders this period" value={purchases.length} tone="success" />
       </div>
 
       <Toolbar
@@ -171,7 +185,12 @@ export default function PurchasesPage() {
         }
       />
 
-      <DataTable columns={columns} rows={purchases} loading={loading} emptyTitle="No purchase orders" />
+      <DataTable
+        columns={columns}
+        rows={purchases}
+        loading={loading}
+        emptyTitle="No purchase orders"
+      />
 
       <PurchaseFormModal open={form.isOpen} onClose={form.close} />
     </div>

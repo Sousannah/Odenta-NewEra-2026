@@ -1,30 +1,27 @@
-import * as db from "@/mock";
-import { respond, search } from "./http.mock";
+import { api } from "@/api/client";
+import { endpoints } from "@/api/endpoints";
 
-export const getAccounts = () => respond(db.accounts);
+export const getAccounts = (params) => api.get(endpoints.finance.accounts, params);
+export const getAccount = (id) => api.get(endpoints.finance.accountDetail(id));
+export const createAccount = (body) => api.post(endpoints.finance.accounts, body);
+export const updateAccount = (id, body) => api.patch(endpoints.finance.accountDetail(id), body);
+export const setAccountActive = (id, active) =>
+  api.patch(endpoints.finance.accountDetail(id), { active });
 
-export const getAccountTransactions = (accountId) =>
-  respond(
-    db.accountTransactions.filter((t) => !accountId || t.accountId === accountId)
-  );
+export const getTransactions = (params) => api.get(endpoints.finance.transactions, params);
+export const transfer = (body) => api.post(endpoints.finance.transfer, body);
 
-export const getBills = ({ query = "" } = {}) =>
-  respond(search(db.bills, query, ["id", "patient", "reservationId"]));
+export const getBills = (params) => api.get(endpoints.finance.bills, params);
+export const getBill = (id) => api.get(endpoints.finance.billDetail(id));
+export const getBillComments = (id) => api.get(endpoints.finance.billComments(id));
+export const addBillComment = (id, body) => api.post(endpoints.finance.billComments(id), body);
 
-export const getBillById = (id) => respond(db.bills.find((b) => b.id === id) ?? null);
+export const getPayments = (params) => api.get(endpoints.finance.payments, params);
+export const takePayment = (body) => api.post(endpoints.finance.payments, body);
 
-export const getBillComments = (billId) =>
-  respond(db.billComments.filter((c) => c.billId === billId));
+export const getPaymentMethods = () => api.get(endpoints.finance.paymentMethods);
+export const setPaymentMethodEnabled = (id, enabled) =>
+  api.patch(endpoints.finance.paymentMethods + "/" + id, { enabled });
 
-export const getPaymentsReceived = ({ query = "" } = {}) =>
-  respond(search(db.paymentsReceived, query, ["id", "patient", "billId", "method"]));
-
-export const getPaymentMethods = () => respond(db.paymentMethods);
-
-export const getPurchases = ({ status = "all", query = "" } = {}) => {
-  const rows =
-    status === "all" ? db.purchases : db.purchases.filter((p) => p.status === status);
-  return respond(search(rows, query, ["id", "vendor", "category", "account"]));
-};
-
-export const getSalesSummary = () => respond(db.salesSummary);
+export const getPurchases = (params) => api.get(endpoints.finance.purchases, params);
+export const getSummary = () => api.get(endpoints.finance.summary);

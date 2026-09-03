@@ -1,13 +1,19 @@
 import { NavLink } from "react-router-dom";
 import { Building2, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { footerNavigation, navigation } from "@/config/navigation";
+import { navigationFor } from "@/config/navigation";
+import { ROLE_META } from "@/auth/roles";
+import { useAuth } from "@/auth/AuthContext";
 import { Logo } from "@/components/shared/Logo";
+import { Badge } from "@/components/ui/Badge";
 
 function ClinicCard({ clinic, collapsed }) {
   if (collapsed) {
     return (
-      <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-brand-600">
+      <div
+        title={clinic?.name}
+        className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-brand-600"
+      >
         <Building2 className="h-4 w-4" />
       </div>
     );
@@ -47,7 +53,10 @@ function NavRow({ item, collapsed }) {
       {({ isActive }) => (
         <>
           <Icon
-            className={cn("h-[18px] w-[18px] shrink-0", isActive ? "text-white" : "text-ink-soft group-hover:text-brand-600")}
+            className={cn(
+              "h-[18px] w-[18px] shrink-0",
+              isActive ? "text-white" : "text-ink-soft group-hover:text-brand-600"
+            )}
             strokeWidth={2.2}
           />
           {!collapsed ? <span className="truncate">{item.label}</span> : null}
@@ -58,6 +67,10 @@ function NavRow({ item, collapsed }) {
 }
 
 export function Sidebar({ clinic, collapsed, onToggle }) {
+  const { user, role } = useAuth();
+  const { sections, footer } = navigationFor(user);
+  const meta = ROLE_META[role];
+
   return (
     <aside
       className={cn(
@@ -71,27 +84,37 @@ export function Sidebar({ clinic, collapsed, onToggle }) {
 
       <ClinicCard clinic={clinic} collapsed={collapsed} />
 
+      {!collapsed && meta ? (
+        <Badge tone={meta.tone} className="w-fit">
+          {meta.label}
+        </Badge>
+      ) : null}
+
       <nav className="-mr-2 flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pr-2">
-        {navigation.map((section, index) => (
+        {sections.map((section, index) => (
           <div key={section.group ?? `root-${index}`} className="flex flex-col gap-1">
             {section.group && !collapsed ? (
               <span className="px-3 pb-1 pt-2 text-[10px] font-extrabold uppercase tracking-[0.12em] text-ink-faint">
                 {section.group}
               </span>
             ) : null}
-            {section.group && collapsed ? <span className="mx-auto my-1 h-px w-6 bg-slate-200" /> : null}
+            {section.group && collapsed ? (
+              <span className="mx-auto my-1 h-px w-6 bg-slate-200" />
+            ) : null}
             {section.items.map((item) => (
-              <NavRow key={item.to} item={item} collapsed={collapsed} />
+              <NavRow key={item.key} item={item} collapsed={collapsed} />
             ))}
           </div>
         ))}
       </nav>
 
-      <div className="flex flex-col gap-1 border-t border-slate-200 pt-3">
-        {footerNavigation.map((item) => (
-          <NavRow key={item.to} item={item} collapsed={collapsed} />
-        ))}
-      </div>
+      {footer.length ? (
+        <div className="flex flex-col gap-1 border-t border-slate-200 pt-3">
+          {footer.map((item) => (
+            <NavRow key={item.key} item={item} collapsed={collapsed} />
+          ))}
+        </div>
+      ) : null}
 
       <button
         type="button"

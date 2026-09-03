@@ -1,10 +1,13 @@
 import { useState } from "react";
-import { LayoutGrid, List, Plus, Wrench } from "lucide-react";
+import { differenceInCalendarDays } from "date-fns";
+import { CalendarClock, LayoutGrid, List, Plus, Wrench } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useAsync, useDisclosure } from "@/hooks";
 import { useToast } from "@/components/ui/Toast";
-import { clinicService } from "@/services";
+import { inventoryService } from "@/services";
 import { formatDate, formatMoney } from "@/lib/format";
+import { P } from "@/auth/permissions";
+import { useAuth } from "@/auth/AuthContext";
 import { DataTable } from "@/components/ui/DataTable";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -16,6 +19,10 @@ import { PageHeader, StatCard, Toolbar, toneFor } from "@/components/shared";
 const STATUSES = ["Used", "Not Used", "Draft"];
 
 function PeripheralCard({ item, onOpen }) {
+  const dueDays = item.nextService
+    ? differenceInCalendarDays(new Date(item.nextService), new Date())
+    : null;
+
   return (
     <button
       type="button"
@@ -45,7 +52,19 @@ function PeripheralCard({ item, onOpen }) {
         ))}
       </div>
 
-      <div className="mt-1 flex items-center justify-between border-t border-slate-100 pt-3">
+      {dueDays != null ? (
+        <p
+          className={cn(
+            "flex items-center gap-1.5 text-[12px]",
+            dueDays <= 14 ? "font-bold text-danger" : "text-ink-soft"
+          )}
+        >
+          <CalendarClock className="h-3.5 w-3.5" />
+          Service {dueDays <= 0 ? "overdue" : `in ${dueDays} day(s)`}
+        </p>
+      ) : null}
+
+      <div className="mt-auto flex items-center justify-between border-t border-slate-100 pt-3">
         <span className="text-[12px] text-ink-soft">{item.assignedTo}</span>
         <span className="text-[15px] font-extrabold text-ink">
           {formatMoney(item.purchasePrice)}
@@ -63,7 +82,7 @@ function PeripheralFormModal({ open, onClose, item }) {
       open={open}
       onClose={onClose}
       title={editing ? item.name : "Add peripheral"}
-      description="Equipment assets, their assignment and purchase details."
+      description="Equipment assets, their assignment and service schedule."
       size="lg"
       footer={
         <>
@@ -111,12 +130,18 @@ function PeripheralFormModal({ open, onClose, item }) {
           <Field label="Invoice number">
             <Input defaultValue={item?.invoiceNumber ?? ""} />
           </Field>
+          <Field label="Next service due">
+            <Input type="date" defaultValue={item?.nextService ?? ""} />
+          </Field>
           <Field label="Status">
             <Select defaultValue={item?.status ?? "Used"}>
               {STATUSES.map((option) => (
                 <option key={option}>{option}</option>
               ))}
             </Select>
+          </Field>
+          <Field label="Room">
+            <Input defaultValue={item?.room ?? ""} />
           </Field>
         </div>
         <Field label="Description">
@@ -128,6 +153,9 @@ function PeripheralFormModal({ open, onClose, item }) {
 }
 
 export default function PeripheralsPage() {
+  const { can } = useAuth();
+  const canManage = can(P.PERIPHERAL_MANAGE);
+
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
   const [view, setView] = useState("grid");
@@ -135,12 +163,15 @@ export default function PeripheralsPage() {
   const form = useDisclosure();
 
   const { data: peripherals = [], loading } = useAsync(
-    () => clinicService.getPeripherals({ status, query }),
+    () => inventoryService.getPeripherals({ status, q: query }),
     [status, query],
     []
   );
 
   const totalValue = peripherals.reduce((sum, item) => sum + item.purchasePrice, 0);
+  const dueService = peripherals.filter(
+    (item) => item.nextService && differenceInCalendarDays(new Date(item.nextService), new Date()) <= 14
+  );
 
   const openForm = (item = null) => {
     setSelected(item);
@@ -164,10 +195,18 @@ export default function PeripheralsPage() {
     { key: "vendor", header: "Vendor", sortable: true },
     { key: "assignedTo", header: "Assigned to" },
     {
-      key: "purchaseDate",
-      header: "Purchase date",
+      key: "nextService",
+      header: "Next service",
       sortable: true,
-      render: (row) => formatDate(row.purchaseDate),
+      render: (row) => {
+        if (!row.nextService) return <span className="text-ink-faint">—</span>;
+        const days = differenceInCalendarDays(new Date(row.nextService), new Date());
+        return (
+          <span className={cn("text-[13px]", days <= 14 ? "font-bold text-danger" : "text-ink-muted")}>
+            {formatDate(row.nextService, "d MMM yyyy")}
+          </span>
+        );
+      },
     },
     {
       key: "purchasePrice",
@@ -187,25 +226,32 @@ export default function PeripheralsPage() {
     <div className="flex flex-col gap-5 p-6">
       <PageHeader
         title="Peripherals"
-        description="Every chair, scanner and sterilizer the clinic owns, with its assignment."
+        description="Every chair, scanner and sterilizer the clinic owns, with its service schedule."
         actions={
-          <Button leftIcon={<Plus className="h-4 w-4" />} onClick={() => openForm()}>
-            Add peripheral
-          </Button>
+          canManage ? (
+            <Button leftIcon={<Plus className="h-4 w-4" />} onClick={() => openForm()}>
+              Add peripheral
+            </Button>
+          ) : null
         }
       />
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard label="Total asset value" value={formatMoney(totalValue)} icon={<Wrench className="h-5 w-5" />} />
+        <StatCard
+          label="Total asset value"
+          value={formatMoney(totalValue)}
+          icon={<Wrench className="h-5 w-5" />}
+        />
         <StatCard
           label="In use"
           value={peripherals.filter((item) => item.status === "Used").length}
           tone="success"
         />
         <StatCard
-          label="Idle or draft"
-          value={peripherals.filter((item) => item.status !== "Used").length}
+          label="Service due soon"
+          value={dueService.length}
           tone="warning"
+          icon={<CalendarClock className="h-5 w-5" />}
         />
       </div>
 

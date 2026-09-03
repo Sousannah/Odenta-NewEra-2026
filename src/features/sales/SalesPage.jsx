@@ -1,15 +1,10 @@
 import { useState } from "react";
-import {
-  CalendarRange,
-  Download,
-  Printer,
-  Receipt,
-  TrendingUp,
-  Wallet,
-} from "lucide-react";
+import { CalendarRange, Download, Printer, Receipt, TrendingUp, Wallet } from "lucide-react";
 import { useAsync, useDisclosure } from "@/hooks";
 import { financeService } from "@/services";
 import { formatDate, formatMoney } from "@/lib/format";
+import { P } from "@/auth/permissions";
+import { useAuth } from "@/auth/AuthContext";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/Tabs";
 import { DataTable } from "@/components/ui/DataTable";
 import { Button, IconButton } from "@/components/ui/Button";
@@ -19,9 +14,7 @@ import { SearchInput } from "@/components/ui/Misc";
 import { StatCard, Toolbar, toneFor } from "@/components/shared";
 import { BillPaymentModal } from "./BillPaymentModal";
 
-/* --------------------------------------------------------- sub-bill rows */
-
-function BillLines({ bill, onPay }) {
+function BillLines({ bill, onPay, canPay }) {
   return (
     <div className="divide-y divide-slate-100">
       {bill.items.map((item) => (
@@ -35,7 +28,7 @@ function BillLines({ bill, onPay }) {
           <span className="text-[13px] text-ink-muted">
             Amount <b className="text-ink">{formatMoney(item.amount)}</b>
           </span>
-          {item.status === "SET PAYMENT" ? (
+          {item.status === "SET PAYMENT" && canPay ? (
             <Button size="sm" onClick={() => onPay(bill)}>
               Set Payment
             </Button>
@@ -56,21 +49,21 @@ function BillLines({ bill, onPay }) {
   );
 }
 
-/* ------------------------------------------------------------------ page */
-
 export default function SalesPage() {
+  const { can } = useAuth();
+  const canPay = can(P.PAYMENT_TAKE);
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState(null);
   const payment = useDisclosure();
 
-  const { data: summary } = useAsync(() => financeService.getSalesSummary(), []);
-  const { data: bills = [], loading } = useAsync(
-    () => financeService.getBills({ query }),
+  const { data: summary } = useAsync(() => financeService.getSummary(), []);
+  const { data: bills = [], loading, refetch } = useAsync(
+    () => financeService.getBills({ q: query }),
     [query],
     []
   );
-  const { data: payments = [] } = useAsync(
-    () => financeService.getPaymentsReceived({ query }),
+  const { data: payments = [], refetch: refetchPayments } = useAsync(
+    () => financeService.getPayments({ q: query }),
     [query],
     []
   );
@@ -82,12 +75,12 @@ export default function SalesPage() {
 
   const billColumns = [
     {
-      key: "reservationId",
+      key: "appointmentId",
       header: "Reservation ID",
       sortable: true,
       render: (row) => (
         <span className="flex items-center gap-2">
-          <span className="text-[13.5px] font-bold text-ink">#{row.reservationId}</span>
+          <span className="text-[13.5px] font-bold text-ink">#{row.appointmentId}</span>
           {row.isNew ? <Badge tone="info">New</Badge> : null}
         </span>
       ),
@@ -188,7 +181,7 @@ export default function SalesPage() {
 
   return (
     <div className="flex flex-col gap-5 px-6 pb-6 pt-5">
-      <div className="grid gap-4 sm:grid-cols-2 xl:max-w-[720px]">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           label="Revenue this month"
           value={formatMoney(summary?.revenue.total ?? 0)}
@@ -201,6 +194,19 @@ export default function SalesPage() {
           change={summary?.profit.change}
           tone="success"
           icon={<Wallet className="h-5 w-5" />}
+        />
+        <StatCard
+          label="Outstanding"
+          value={formatMoney(summary?.outstanding.total ?? 0)}
+          change={summary?.outstanding.change}
+          tone="danger"
+          icon={<Receipt className="h-5 w-5" />}
+        />
+        <StatCard
+          label="Collected today"
+          value={formatMoney(summary?.collected.total ?? 0)}
+          change={summary?.collected.change}
+          tone="warning"
         />
       </div>
 
@@ -220,11 +226,10 @@ export default function SalesPage() {
             columns={billColumns}
             rows={bills}
             loading={loading}
-            initialExpanded={["BILL00123"]}
-            expandable={(bill) => <BillLines bill={bill} onPay={openPayment} />}
+            initialExpanded={bills[0] ? [bills[0].id] : []}
+            expandable={(bill) => <BillLines bill={bill} onPay={openPayment} canPay={canPay} />}
             emptyTitle="No bills yet"
             emptyDescription="Finished treatments create a bill automatically."
-            emptyAction={<Button leftIcon={<Receipt className="h-4 w-4" />}>New bill</Button>}
           />
         </TabsContent>
 
@@ -234,7 +239,15 @@ export default function SalesPage() {
         </TabsContent>
       </Tabs>
 
-      <BillPaymentModal open={payment.isOpen} onClose={payment.close} bill={selected} />
+      <BillPaymentModal
+        open={payment.isOpen}
+        onClose={() => {
+          payment.close();
+          refetch();
+          refetchPayments();
+        }}
+        bill={selected}
+      />
     </div>
   );
 }

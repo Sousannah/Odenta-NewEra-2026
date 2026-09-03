@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Banknote, CreditCard, Landmark, Plus, QrCode, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useAsync, useDisclosure } from "@/hooks";
@@ -19,25 +18,25 @@ const ICONS = {
   shield: ShieldCheck,
 };
 
-function MethodCard({ method, enabled, onToggle }) {
+function MethodCard({ method, onToggle }) {
   const Icon = ICONS[method.icon] ?? Banknote;
   return (
     <article
       className={cn(
         "od-card gap-4 p-5 transition",
-        enabled ? "border-slate-200" : "border-dashed bg-slate-50/60"
+        method.enabled ? "border-slate-200" : "border-dashed bg-slate-50/60"
       )}
     >
       <div className="flex items-start justify-between gap-3">
         <span
           className={cn(
             "flex h-11 w-11 items-center justify-center rounded-2xl",
-            enabled ? "bg-brand-50 text-brand-600" : "bg-slate-100 text-ink-faint"
+            method.enabled ? "bg-brand-50 text-brand-600" : "bg-slate-100 text-ink-faint"
           )}
         >
           <Icon className="h-5 w-5" />
         </span>
-        <Switch checked={enabled} onChange={() => onToggle(method.id)} label={method.name} />
+        <Switch checked={method.enabled} onChange={() => onToggle(method)} label={method.name} />
       </div>
 
       <div>
@@ -64,7 +63,7 @@ function MethodCard({ method, enabled, onToggle }) {
   );
 }
 
-function MethodFormModal({ open, onClose }) {
+function MethodFormModal({ open, onClose, accounts }) {
   const toast = useToast();
   return (
     <Modal
@@ -106,9 +105,9 @@ function MethodFormModal({ open, onClose }) {
           </Field>
         </div>
         <Field label="Settles into account">
-          <Select defaultValue="Free cash">
-            {["Free cash", "Drug purchase", "Treatment fund", "Stock fund"].map((option) => (
-              <option key={option}>{option}</option>
+          <Select defaultValue={accounts[0]?.name}>
+            {accounts.map((account) => (
+              <option key={account.id}>{account.name}</option>
             ))}
           </Select>
         </Field>
@@ -118,21 +117,20 @@ function MethodFormModal({ open, onClose }) {
 }
 
 export default function PaymentMethodsPage() {
-  const [overrides, setOverrides] = useState({});
   const form = useDisclosure();
   const toast = useToast();
 
-  const { data: methods = [] } = useAsync(() => financeService.getPaymentMethods(), [], []);
+  const { data: methods = [], refetch } = useAsync(() => financeService.getPaymentMethods(), [], []);
+  const { data: accounts = [] } = useAsync(
+    () => financeService.getAccounts({ active: "true" }),
+    [],
+    []
+  );
 
-  const isEnabled = (method) => overrides[method.id] ?? method.enabled;
-
-  const toggle = (id) => {
-    setOverrides((prev) => {
-      const method = methods.find((item) => item.id === id);
-      const next = !(prev[id] ?? method.enabled);
-      toast.info(`${method.name} ${next ? "enabled" : "disabled"}`);
-      return { ...prev, [id]: next };
-    });
+  const toggle = async (method) => {
+    await financeService.setPaymentMethodEnabled(method.id, !method.enabled);
+    toast.info(`${method.name} ${method.enabled ? "disabled" : "enabled"}`);
+    refetch();
   };
 
   return (
@@ -149,16 +147,11 @@ export default function PaymentMethodsPage() {
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {methods.map((method) => (
-          <MethodCard
-            key={method.id}
-            method={method}
-            enabled={isEnabled(method)}
-            onToggle={toggle}
-          />
+          <MethodCard key={method.id} method={method} onToggle={toggle} />
         ))}
       </div>
 
-      <MethodFormModal open={form.isOpen} onClose={form.close} />
+      <MethodFormModal open={form.isOpen} onClose={form.close} accounts={accounts} />
     </div>
   );
 }

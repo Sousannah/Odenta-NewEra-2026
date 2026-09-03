@@ -5,6 +5,7 @@ import { useAsync } from "@/hooks";
 import { useToast } from "@/components/ui/Toast";
 import { clinicService } from "@/services";
 import { formatDate, fromNow } from "@/lib/format";
+import { useAuth } from "@/auth/AuthContext";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -48,12 +49,17 @@ function ThreadRow({ thread, active, onSelect }) {
 }
 
 export default function SupportPage() {
+  const { role } = useAuth();
   const [active, setActive] = useState(null);
   const [draft, setDraft] = useState("");
   const toast = useToast();
 
   const { data: threads = [] } = useAsync(() => clinicService.getSupportThreads(), [], []);
-  const { data: articles = [] } = useAsync(() => clinicService.getHelpArticles(), [], []);
+  const { data: articles = [] } = useAsync(
+    () => clinicService.getHelpArticles({ role }),
+    [role],
+    []
+  );
 
   useEffect(() => {
     if (!active && threads.length) setActive(threads[0]);
@@ -63,10 +69,8 @@ export default function SupportPage() {
     <div className="flex flex-col gap-5 p-6">
       <PageHeader
         title="Customer support"
-        description="Conversations with the Odenta team, and the shortcuts your staff ask for most."
-        actions={
-          <Button leftIcon={<MessageSquarePlus className="h-4 w-4" />}>New request</Button>
-        }
+        description="Conversations with the Odenta team, and the guides your role asks for most."
+        actions={<Button leftIcon={<MessageSquarePlus className="h-4 w-4" />}>New request</Button>}
       />
 
       <div className="grid grid-cols-12 gap-5">
@@ -94,10 +98,7 @@ export default function SupportPage() {
               />
               <CardBody className="flex min-h-[340px] flex-col gap-4 pt-4">
                 {active.messages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={cn("flex gap-3", message.me && "flex-row-reverse")}
-                  >
+                  <div key={message.id} className={cn("flex gap-3", message.me && "flex-row-reverse")}>
                     <Avatar name={message.from} size="sm" />
                     <div className={cn("max-w-[76%]", message.me && "text-right")}>
                       <div className="text-[12px] text-ink-soft">
@@ -106,9 +107,7 @@ export default function SupportPage() {
                       <div
                         className={cn(
                           "mt-1 rounded-2xl px-4 py-3 text-[13.5px]",
-                          message.me
-                            ? "bg-brand-600 text-white"
-                            : "bg-slate-100 text-ink"
+                          message.me ? "bg-brand-600 text-white" : "bg-slate-100 text-ink"
                         )}
                       >
                         {message.body}
@@ -143,25 +142,32 @@ export default function SupportPage() {
       </div>
 
       <Card>
-        <CardHeader title="Help articles" subtitle="Short guides for the most common workflows" />
+        <CardHeader
+          title="Help articles"
+          subtitle="Short guides relevant to your role"
+        />
         <CardBody className="grid gap-3 pt-3 sm:grid-cols-2 xl:grid-cols-4">
-          {articles.map((article) => (
-            <a
-              key={article.id}
-              href="#help"
-              className="flex items-start gap-3 rounded-2xl border border-slate-200 px-4 py-3.5 transition hover:border-brand-300 hover:bg-brand-50/40"
-            >
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
-                <BookOpen className="h-4 w-4" />
-              </span>
-              <span className="min-w-0">
-                <span className="block text-[13.5px] font-bold text-ink">{article.title}</span>
-                <span className="block text-[12px] text-ink-soft">
-                  {article.category} · {article.minutes} min read
+          {articles.length === 0 ? (
+            <EmptyState title="No articles yet" className="col-span-full py-8" />
+          ) : (
+            articles.map((article) => (
+              <a
+                key={article.id}
+                href="#help"
+                className="flex items-start gap-3 rounded-2xl border border-slate-200 px-4 py-3.5 transition hover:border-brand-300 hover:bg-brand-50/40"
+              >
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
+                  <BookOpen className="h-4 w-4" />
                 </span>
-              </span>
-            </a>
-          ))}
+                <span className="min-w-0">
+                  <span className="block text-[13.5px] font-bold text-ink">{article.title}</span>
+                  <span className="block text-[12px] text-ink-soft">
+                    {article.category} · {article.minutes} min read
+                  </span>
+                </span>
+              </a>
+            ))
+          )}
         </CardBody>
       </Card>
     </div>

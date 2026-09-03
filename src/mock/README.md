@@ -1,13 +1,35 @@
-# Mock data (temporary)
+# Mock backend (temporary)
 
-Everything in this folder is throwaway scaffolding for the UI. It is **not**
-imported anywhere in the app except by `src/services/*`.
+An in-memory stand-in for the API. It is stateful within a session, so flows
+such as transferring money, taking a payment or advancing a lab case really
+change the data behind them.
 
-## How to remove it when the real backend lands
+## Layout
 
-1. Re-implement each function in `src/services/*.js` with a real HTTP call
-   (the exported function names and return shapes are the contract).
-2. Delete this whole `src/mock/` folder.
-3. Delete `src/services/http.mock.js`.
+- `router.js` — the route table. Handlers are registered against path patterns
+  with `:param` segments, exactly the way the real server routes.
+- `db/*.js` — fixtures. Appointments and recalls are generated relative to
+  *today* so the calendar is never empty.
+- `index.js` — aggregates the fixtures for the router.
 
-No screen, component or hook imports `@/mock` directly — grep for it to confirm.
+## Rules
+
+- Only `src/api/client.js` reaches into this folder, and only when
+  `VITE_API_MODE` is `mock`. No component, hook or service imports it.
+- Handlers throw the same `ApiError` shapes the live driver produces, so
+  validation paths (insufficient funds, unknown id, forbidden) can be exercised
+  before the backend exists.
+
+## Removing it
+
+1. Set `VITE_API_MODE=live` and `VITE_API_BASE_URL` in `.env`.
+2. Reconcile `src/api/endpoints.js` with the real paths.
+3. Delete this folder.
+
+Verify nothing else depends on it:
+
+```bash
+grep -rn "@/mock" src --include=*.jsx --include=*.js
+```
+
+Only `src/api/client.js` should appear.

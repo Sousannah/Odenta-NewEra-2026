@@ -1,36 +1,39 @@
 import { useState } from "react";
-import { Mail, Phone, Plus, UserPlus } from "lucide-react";
+import { Filter, Mail, MoreVertical, Phone, Stethoscope, UserPlus, Users } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useAsync, useDisclosure } from "@/hooks";
 import { useToast } from "@/components/ui/Toast";
 import { clinicService } from "@/services";
+import { P } from "@/auth/permissions";
+import { useAuth } from "@/auth/AuthContext";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/Tabs";
 import { DataTable } from "@/components/ui/DataTable";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Avatar } from "@/components/ui/Avatar";
+import { Dropdown } from "@/components/ui/Dropdown";
 import { SearchInput } from "@/components/ui/Misc";
-import { Modal } from "@/components/ui/Modal";
-import { Field, Input, Select } from "@/components/ui/Field";
-import { PageHeader, Toolbar, toneFor } from "@/components/shared";
+import { Toolbar, toneFor } from "@/components/shared";
+import { StaffWizard } from "./StaffWizard";
 
-const WEEK = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const WEEK = ["S", "M", "T", "W", "T", "F", "S"];
+const WEEK_KEYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 function WorkingDays({ days = [] }) {
   return (
     <div className="flex gap-1">
-      {WEEK.map((day) => {
-        const on = days.includes(day);
+      {WEEK_KEYS.map((key, index) => {
+        const on = days.includes(key);
         return (
           <span
-            key={day}
-            title={day}
+            key={`${key}-${index}`}
+            title={key}
             className={cn(
-              "flex h-6 w-6 items-center justify-center rounded-md text-[10px] font-bold",
-              on ? "bg-brand-100 text-brand-700" : "bg-slate-100 text-ink-faint"
+              "flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold",
+              on ? "bg-brand-500 text-white" : "bg-slate-100 text-ink-faint"
             )}
           >
-            {day[0]}
+            {WEEK[index]}
           </span>
         );
       })}
@@ -38,71 +41,27 @@ function WorkingDays({ days = [] }) {
   );
 }
 
-function InviteModal({ open, onClose }) {
-  const toast = useToast();
-  return (
-    <Modal
-      open={open}
-      onClose={onClose}
-      title="Invite a team member"
-      description="They receive an email invitation to join this clinic."
-      size="md"
-      footer={
-        <>
-          <Button variant="ghost" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button
-            className="min-w-[140px]"
-            onClick={() => {
-              toast.success("Invitation sent");
-              onClose();
-            }}
-          >
-            Send invite
-          </Button>
-        </>
-      }
-    >
-      <div className="flex flex-col gap-5">
-        <Field label="Full name" required>
-          <Input placeholder="Drg Amara Voss" />
-        </Field>
-        <Field label="Email address" required>
-          <Input type="email" placeholder="name@clinic.com" />
-        </Field>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Role">
-            <Select defaultValue="Dentist">
-              {["Dentist", "Dental Assistant", "Front Office", "Lab Technician", "Super Admin"].map(
-                (role) => (
-                  <option key={role}>{role}</option>
-                )
-              )}
-            </Select>
-          </Field>
-          <Field label="Employment">
-            <Select defaultValue="FULL-TIME">
-              <option>FULL-TIME</option>
-              <option>PART-TIME</option>
-            </Select>
-          </Field>
-        </div>
-      </div>
-    </Modal>
-  );
-}
-
 export default function StaffPage() {
-  const [role, setRole] = useState("all");
-  const [query, setQuery] = useState("");
-  const invite = useDisclosure();
+  const { can } = useAuth();
+  const toast = useToast();
+  const canManage = can(P.STAFF_MANAGE);
 
-  const { data: staff = [], loading } = useAsync(
-    () => clinicService.getStaff({ role, query }),
-    [role, query],
+  const [group, setGroup] = useState("dentist");
+  const [query, setQuery] = useState("");
+  const [selected, setSelected] = useState(null);
+
+  const wizard = useDisclosure();
+
+  const { data: staff = [], loading, refetch } = useAsync(
+    () => clinicService.getStaff({ group, q: query }),
+    [group, query],
     []
   );
+
+  const openWizard = (member = null) => {
+    setSelected(member);
+    wizard.open();
+  };
 
   const columns = [
     {
@@ -123,70 +82,113 @@ export default function StaffPage() {
       key: "contact",
       header: "Contact",
       render: (row) => (
-        <span className="flex flex-col gap-1 text-[12.5px] text-ink-muted">
-          <span className="flex items-center gap-1.5">
-            <Mail className="h-3.5 w-3.5 text-ink-faint" />
-            {row.email}
-          </span>
-          <span className="flex items-center gap-1.5">
+        <span className="flex flex-col gap-1 text-[12.5px]">
+          <span className="flex items-center gap-1.5 text-ink-muted">
             <Phone className="h-3.5 w-3.5 text-ink-faint" />
             {row.phone}
+          </span>
+          <span className="flex items-center gap-1.5">
+            <Mail className="h-3.5 w-3.5 text-ink-faint" />
+            <a href={`mailto:${row.email}`} className="text-brand-600 hover:underline">
+              {row.email}
+            </a>
           </span>
         </span>
       ),
     },
-    { key: "role", header: "Occupation", sortable: true },
     {
       key: "workingDays",
       header: "Working days",
       render: (row) => <WorkingDays days={row.workingDays} />,
     },
     {
-      key: "treatments",
+      key: "services",
       header: "Assigned treatment",
-      render: (row) =>
-        row.treatments?.length ? (
-          <span className="flex flex-wrap gap-1.5">
-            {row.treatments.slice(0, 2).map((treatment) => (
-              <Badge key={treatment} tone="brand">
-                {treatment}
-              </Badge>
-            ))}
-            {row.treatments.length > 2 ? (
-              <Badge tone="neutral">+{row.treatments.length - 2}</Badge>
+      render: (row) => {
+        const all = [...(row.services ?? []), ...(row.cosmetics ?? [])];
+        if (!all.length) return <span className="text-ink-faint">—</span>;
+        return (
+          <span className="flex flex-wrap items-center gap-1.5">
+            <span className="text-[12.5px] text-ink-muted">{all.slice(0, 2).join(", ")}</span>
+            {all.length > 2 ? (
+              <span className="text-[12px] font-bold text-brand-600">+{all.length - 2}</span>
             ) : null}
           </span>
-        ) : (
-          <span className="text-ink-faint">—</span>
-        ),
+        );
+      },
     },
     {
       key: "employment",
       header: "Type",
       render: (row) => <Badge tone={toneFor(row.employment)}>{row.employment}</Badge>,
     },
+    ...(canManage
+      ? [
+          {
+            key: "actions",
+            header: "",
+            align: "right",
+            render: (row) => (
+              <Dropdown
+                items={[
+                  { value: "edit", label: "Edit member" },
+                  { value: "rota", label: "Adjust rota" },
+                  { value: "deactivate", label: "Deactivate", tone: "danger" },
+                ]}
+                onSelect={(value) => {
+                  if (value === "edit") openWizard(row);
+                  else if (value === "rota") openWizard(row);
+                  else toast.error(`${row.name} deactivated`);
+                }}
+                trigger={
+                  <span className="flex h-8 w-8 items-center justify-center rounded-lg text-ink-soft transition hover:bg-slate-100">
+                    <MoreVertical className="h-4 w-4" />
+                  </span>
+                }
+              />
+            ),
+          },
+        ]
+      : []),
   ];
 
+  const total = staff.length;
+  const label = group === "dentist" ? "Doctor" : group === "general" ? "Staff" : "Team member";
+
   return (
-    <div className="flex flex-col gap-5 px-6 pb-6">
-      <Tabs value={role} onValueChange={setRole}>
+    <div className="flex flex-col gap-4 px-6 pb-6">
+      <Tabs value={group} onValueChange={setGroup}>
         <TabsList className="pt-4">
-          <TabsTrigger value="all">All Staff</TabsTrigger>
-          <TabsTrigger value="dentist">Dentists</TabsTrigger>
+          <TabsTrigger value="dentist">Doctor Staff</TabsTrigger>
           <TabsTrigger value="general">General Staff</TabsTrigger>
+          <TabsTrigger value="all">Everyone</TabsTrigger>
         </TabsList>
 
-        <TabsContent value={role} className="pt-5">
-          <PageHeader
-            className="mb-4"
-            title="Staff list"
-            description="Plan schedules, coordinate tasks and keep workloads balanced."
-            actions={
-              <Button leftIcon={<UserPlus className="h-4 w-4" />} onClick={invite.open}>
-                Invite member
+        <TabsContent value={group} className="pt-5">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-ink-muted">
+                {group === "dentist" ? (
+                  <Stethoscope className="h-[18px] w-[18px]" />
+                ) : (
+                  <Users className="h-[18px] w-[18px]" />
+                )}
+              </span>
+              <span className="text-[22px] font-extrabold text-ink">{total}</span>
+              <span className="text-[13px] text-ink-soft">{label}</span>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="secondary" leftIcon={<Filter className="h-4 w-4" />}>
+                Filters
               </Button>
-            }
-          />
+              {canManage ? (
+                <Button leftIcon={<UserPlus className="h-4 w-4" />} onClick={() => openWizard()}>
+                  {group === "dentist" ? "Add Doctor" : "Add Staff"}
+                </Button>
+              ) : null}
+            </div>
+          </div>
 
           <Toolbar
             className="mb-4"
@@ -195,13 +197,8 @@ export default function StaffPage() {
                 value={query}
                 onChange={setQuery}
                 placeholder="Search staff…"
-                className="w-[300px]"
+                className="w-[320px]"
               />
-            }
-            right={
-              <Button variant="secondary" leftIcon={<Plus className="h-4 w-4" />}>
-                Add schedule
-              </Button>
             }
           />
 
@@ -209,12 +206,19 @@ export default function StaffPage() {
             columns={columns}
             rows={staff}
             loading={loading}
+            onRowClick={canManage ? openWizard : undefined}
             emptyTitle="No staff members"
+            emptyDescription="Invite your first team member to get started."
           />
         </TabsContent>
       </Tabs>
 
-      <InviteModal open={invite.isOpen} onClose={invite.close} />
+      <StaffWizard
+        open={wizard.isOpen}
+        onClose={wizard.close}
+        member={selected}
+        onSaved={refetch}
+      />
     </div>
   );
 }

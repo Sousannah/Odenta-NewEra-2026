@@ -1,14 +1,7 @@
-import * as db from "@/mock";
-import { respond } from "./http.mock";
+import { api } from "@/api/client";
+import { endpoints } from "@/api/endpoints";
 
-export const getDashboard = () =>
-  respond({
-    cashflow: db.cashflow,
-    expenses: db.expenses,
-    incomeExpense: db.incomeExpense,
-    patients: db.patientsSplit,
-    popularTreatments: db.popularTreatments,
-    stock: db.stockAvailability,
-  });
+/** Role-scoped dashboard payload; the server decides what a role may see. */
+export const getDashboard = (role) => api.get(endpoints.analytics.dashboard(role));
 
-export const getReportMetrics = () => respond(db.reportMetrics);
+export const getReport = () => api.get(endpoints.analytics.report);
