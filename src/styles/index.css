@@ -1,0 +1,110 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --od-primary: #405be6;
+  --od-primary-hover: #3d56e8;
+  --od-secondary: #61b1ff;
+  --od-warning: #f7ba21;
+  --od-danger: #e45689;
+  --od-success: #47b889;
+  --od-background: #f1f5f9;
+  --od-highlight: #e9effb;
+  --od-text: #263444;
+  --od-sidebar-width: 264px;
+  --od-sidebar-width-collapsed: 84px;
+  --od-topbar-height: 68px;
+}
+
+@layer base {
+  * {
+    -webkit-font-smoothing: antialiased;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-canvas font-sans text-ink;
+    margin: 0;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-bold tracking-tight text-ink;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply rounded-full border-[3px] border-solid border-transparent bg-slate-300 bg-clip-content;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-slate-400 bg-clip-content;
+  }
+}
+
+@layer components {
+  .od-card {
+    @apply rounded-2xl border border-slate-200/80 bg-white shadow-card;
+  }
+
+  .od-label {
+    @apply text-[11px] font-bold uppercase tracking-[0.08em] text-ink-soft;
+  }
+
+  .od-focus {
+    @apply outline-none ring-brand-600/20 transition focus-visible:ring-4;
+  }
+
+  .od-scroll-x {
+    scrollbar-width: thin;
+  }
+
+  /* Diagonal hatch used by "waiting payment" calendar blocks */
+  .od-hatch {
+    background-image: repeating-linear-gradient(
+      -45deg,
+      rgba(247, 186, 33, 0.16) 0px,
+      rgba(247, 186, 33, 0.16) 6px,
+      transparent 6px,
+      transparent 12px
+    );
+  }
+
+  .od-hatch-slate {
+    background-image: repeating-linear-gradient(
+      -45deg,
+      rgba(148, 163, 184, 0.16) 0px,
+      rgba(148, 163, 184, 0.16) 6px,
+      transparent 6px,
+      transparent 12px
+    );
+  }
+}
+
+/* Recharts polish */
+.recharts-surface:focus,
+.recharts-wrapper:focus {
+  outline: none;
+}
+
+.recharts-cartesian-axis-tick text {
+  fill: #94a3b8;
+  font-size: 11px;
+  font-weight: 600;
+}
