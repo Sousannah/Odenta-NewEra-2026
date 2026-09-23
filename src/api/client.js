@@ -13,7 +13,10 @@ import { ApiError } from "./errors";
  * `VITE_API_BASE_URL` is same-origin by default, because the refresh cookie is
  * httpOnly and first-party — see the proxy note in `vite.config.js`.
  */
-const BASE_URL = import.meta.env?.VITE_API_BASE_URL ?? "/api";
+/* `||`, not `??`: a host that defines the variable but leaves it blank (Vercel
+   does this) would otherwise send every call to `/auth/...` instead of
+   `/api/auth/...`, which the SPA fallback answers with a 405. */
+const BASE_URL = import.meta.env?.VITE_API_BASE_URL || "/api";
 
 /* --------------------------------------------------------------- auth token */
 

@@ -26,9 +26,9 @@
  * that our API refuses a token whose `aud` is not us.
  */
 
-const GOOGLE_CLIENT_ID = import.meta.env?.VITE_GOOGLE_CLIENT_ID ?? "";
-const MICROSOFT_CLIENT_ID = import.meta.env?.VITE_AZURE_AD_CLIENT_ID ?? "";
-const MICROSOFT_TENANT_ID = import.meta.env?.VITE_AZURE_AD_TENANT_ID ?? "common";
+const GOOGLE_CLIENT_ID = import.meta.env?.VITE_GOOGLE_CLIENT_ID || "";
+const MICROSOFT_CLIENT_ID = import.meta.env?.VITE_AZURE_AD_CLIENT_ID || "";
+const MICROSOFT_TENANT_ID = import.meta.env?.VITE_AZURE_AD_TENANT_ID || "common";
 
 export const googleConfigured = Boolean(GOOGLE_CLIENT_ID);
 export const microsoftConfigured = Boolean(MICROSOFT_CLIENT_ID);
