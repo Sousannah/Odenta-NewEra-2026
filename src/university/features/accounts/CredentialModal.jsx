@@ -32,6 +32,13 @@ export default function CredentialModal({ open, account, credential, onClose }) 
   const [copied, setCopied] = useState(false);
 
   const isInvite = credential?.mode === "invite";
+  /**
+   * A federated account has no secret at all — the provider is the credential.
+   * Checked before `value` is derived so this dialog never opens around an
+   * empty string with a Copy button next to it, which is what it would do if
+   * `federated` were allowed to fall through to the temporary-password branch.
+   */
+  const isFederated = credential?.mode === "federated";
   const value = isInvite ? activationUrl(credential?.activationToken) : credential?.temporaryPassword;
 
   /* Reset between accounts, so a second dialog never opens showing "Copied". */
@@ -54,6 +61,33 @@ export default function CredentialModal({ open, account, credential, onClose }) 
   };
 
   if (!open || !credential) return null;
+
+  /* Nothing was minted, so there is nothing to guard: this one *can* be
+     dismissed normally. It exists to confirm the account is ready and to say
+     how the person gets in, which is the one thing they cannot guess. */
+  if (isFederated) {
+    return (
+      <Modal
+        open={open}
+        onClose={onClose}
+        title="Account ready"
+        description={`For ${account?.name ?? "the new account"} · ${account?.email ?? ""}`}
+        size="md"
+        footer={
+          <Button onClick={onClose} autoFocus>
+            Done
+          </Button>
+        }
+      >
+        <InfoBanner tone="info">
+          No password was created and there is nothing to pass on. They sign in with the
+          &ldquo;Continue with&rdquo; button on the sign-in page, using this exact address — if their
+          provider account is under a different one, sign-in will be refused and the address here
+          has to be corrected.
+        </InfoBanner>
+      </Modal>
+    );
+  }
 
   return (
     <Modal

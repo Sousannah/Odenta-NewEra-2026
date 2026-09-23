@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ShieldAlert } from "lucide-react";
 import { platformService } from "@/services";
+import { listProviders } from "@/services/authService";
 import { ROLES, ROLE_META, ROLE_ORDER } from "@/auth/roles";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
@@ -56,6 +57,29 @@ export default function AccountFormModal({ open, onClose, tenants = [], onCreate
   const [touchedUserId, setTouchedUserId] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+
+  /**
+   * Which federated providers this deployment actually has.
+   *
+   * Asked of the server rather than assumed, because "sign in with Microsoft"
+   * is only a way in if a Microsoft audience is configured — offering it
+   * otherwise would create an account with no password *and* no provider, which
+   * is an account nobody can ever reach and no error message explains. Same
+   * source the sign-in page uses to decide which buttons to draw, so the two
+   * screens cannot disagree.
+   */
+  const [providers, setProviders] = useState([]);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    let cancelled = false;
+    listProviders().then((list) => {
+      if (!cancelled) setProviders(list);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
 
   useEffect(() => {
     if (open) return;
@@ -182,11 +206,19 @@ export default function AccountFormModal({ open, onClose, tenants = [], onCreate
                 change what the platform is allowed to do. Creating one is recorded as a critical
                 security event.
               </span>
-              <Switch
-                checked={confirmSuperadmin}
-                onChange={setConfirmSuperadmin}
-                label="I mean to create another platform account"
-              />
+              {/* The consent this gate exists to capture has to be readable, or
+                  it is a bare toggle under a paragraph about deactivating
+                  logins and nobody can tell what flipping it agrees to. */}
+              <div className="flex items-start gap-3">
+                <Switch
+                  checked={confirmSuperadmin}
+                  onChange={setConfirmSuperadmin}
+                  label="I mean to create another platform account"
+                />
+                <span className="min-w-0 text-[13px] font-semibold">
+                  I mean to create another platform account
+                </span>
+              </div>
             </div>
           </InfoBanner>
         ) : null}
@@ -239,21 +271,41 @@ export default function AccountFormModal({ open, onClose, tenants = [], onCreate
           >
             <option value="invite">Invitation link — they choose their own password</option>
             <option value="temporary">Temporary password — you hand it over</option>
+            {/* Offered only where a provider is actually configured: this mode
+                stores no password, so without one the account has no way in. */}
+            {providers.length ? (
+              <option value="federated">
+                {providerLabel(providers)} — no password is stored
+              </option>
+            ) : null}
           </Select>
         </Field>
 
-        <div className="rounded-xl border border-slate-200 p-3.5">
+        {/* `Switch` renders the toggle alone and takes `label` as its accessible
+            name only, so the visible wording sits beside it — the same shape the
+            campus console's own MFA toggle uses. Without the span this rendered
+            as a bare switch with nothing next to it, which is unreadable to
+            everyone except a screen reader. */}
+        <div className="flex items-start gap-3 rounded-xl border border-slate-200 p-3.5">
           <Switch
             checked={form.mfa}
             onChange={(value) => setForm((current) => ({ ...current, mfa: value }))}
             label="Require a second factor"
           />
+          <span className="min-w-0">
+            <span className="block text-[13px] font-semibold text-ink">Require a second factor</span>
+            <span className="block text-[12px] text-ink-muted">
+              Sign-in is refused until this account has enrolled one.
+            </span>
+          </span>
         </div>
 
-        <InfoBanner tone={form.credentialMode === "invite" ? "info" : "warning"}>
+        <InfoBanner tone={form.credentialMode === "temporary" ? "warning" : "info"}>
           {form.credentialMode === "invite"
             ? "No password is stored and none is shown to you. The link is single-use and expires in 14 days; the person sets their own password when they open it."
-            : "You will see this password once. It must be changed at first sign-in, and it is stored only as a hash — nobody can read it back, including you."}
+            : form.credentialMode === "federated"
+              ? `Odenta stores no password for this account. They sign in with ${providerLabel(providers)} using this exact address, so it has to match the one their institution issued — there is nothing to hand over and nothing for you to copy on the next screen.`
+              : "You will see this password once. It must be changed at first sign-in, and it is stored only as a hash — nobody can read it back, including you."}
         </InfoBanner>
 
         <div className="mt-2 flex justify-end gap-3">
@@ -267,6 +319,21 @@ export default function AccountFormModal({ open, onClose, tenants = [], onCreate
       </form>
     </Modal>
   );
+}
+
+/**
+ * "Google", "Microsoft", or "Google or Microsoft" — whichever this deployment
+ * has. Named from the server's own list so the wording never promises a button
+ * the sign-in page will not draw.
+ */
+function providerLabel(providers) {
+  const names = providers
+    .map((provider) => provider?.label ?? provider?.name ?? provider?.id ?? provider)
+    .filter(Boolean)
+    .map((name) => String(name).replace(/^\w/, (c) => c.toUpperCase()));
+  if (!names.length) return "Google or Microsoft";
+  if (names.length === 1) return names[0];
+  return `${names.slice(0, -1).join(", ")} or ${names[names.length - 1]}`;
 }
 
 /** `yara.fouad@aiu.edu.eg` as a student → `AIU-S-YARAFOUAD`. A starting point. */
