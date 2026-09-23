@@ -4,31 +4,28 @@ import { site } from "@/config/paths";
 import { brandAssets } from "@/theme/assets";
 
 const SIZES = {
-  sm: "h-9",
-  md: "h-12",
-  lg: "h-14",
+  sm: { mark: "h-7 w-7", text: "text-[17px]" },
+  md: { mark: "h-8 w-8", text: "text-[19px]" },
+  lg: { mark: "h-11 w-11", text: "text-[26px]" },
 };
 
 /**
- * The Odenta wordmark, linked home.
+ * The Odenta mark beside a live wordmark, linked home.
  *
- * `brandAssets.logo` is the background-removed build, so the mark sits cleanly
- * on any light ground — the tinted footer included. On a dark surface use
- * `<Logo variant="mark" inverted>` from `components/shared`, which draws the
- * mark as SVG beside live text.
+ * Live text rather than the wordmark PNG because the PNG's lettering is navy
+ * and disappears on the dark theme; the tooth itself reads on both grounds.
  */
 export function SiteLogo({ size = "md", className, to = site.home }) {
+  const s = SIZES[size] ?? SIZES.md;
   return (
     <Link
       to={to}
       aria-label="Odenta home"
-      className={cn("od-focus inline-flex shrink-0 items-center rounded-lg", className)}
+      dir="ltr"
+      className={cn("s-focus inline-flex shrink-0 items-center gap-2 rounded-xl", className)}
     >
-      <img
-        src={brandAssets.logo}
-        alt="Odenta"
-        className={cn("w-auto object-contain", SIZES[size])}
-      />
+      <img src={brandAssets.markPng} alt="" aria-hidden="true" className={cn("object-contain", s.mark)} />
+      <span className={cn("s-text font-semibold tracking-[-0.02em]", s.text)}>Odenta</span>
     </Link>
   );
 }

@@ -7,19 +7,23 @@ import { site, auth } from "@/config/paths";
  * the components) means a CMS can replace this module wholesale later.
  */
 
+/** The brand line from the Odenta posts. */
+export const slogan = {
+  en: "Smarter Dentistry, Better Care.",
+  ar: "طب أسنان أذكى، ورعاية أفضل.",
+};
+
 export const primaryNav = [
-  { key: "home", to: site.home, label: { en: "Home", ar: "الرئيسية" }, end: true },
   { key: "universities", to: site.universities, label: { en: "Universities", ar: "الجامعات" } },
   { key: "clinics", to: site.clinics, label: { en: "Clinics", ar: "العيادات" } },
   { key: "services", to: site.services, label: { en: "Services", ar: "الخدمات" } },
-  { key: "book", to: site.book, label: { en: "Book a visit", ar: "احجز موعدًا" } },
-  { key: "pricing", to: site.pricing, label: { en: "Pricing", ar: "الأسعار" } },
+  { key: "demo", to: site.demo, label: { en: "Book a demo", ar: "احجز عرضًا" } },
   { key: "contact", to: site.contact, label: { en: "Contact", ar: "تواصل معنا" } },
 ];
 
 export const headerActions = {
   signIn: { to: auth.signIn, label: { en: "Login", ar: "تسجيل الدخول" } },
-  tryAi: { to: site.tryAi, label: { en: "Try Our AI", ar: "جرّب الذكاء الاصطناعي" } },
+  dashboard: { label: { en: "My dashboard", ar: "لوحتي" } },
 };
 
 export const contactDetails = {
@@ -37,77 +41,54 @@ export const contactDetails = {
 };
 
 export const socialLinks = [
-  { key: "facebook", label: "Facebook", href: "https://facebook.com/odenta" },
-  { key: "instagram", label: "Instagram", href: "https://instagram.com/odenta" },
-  { key: "linkedin", label: "LinkedIn", href: "https://linkedin.com/company/odenta" },
-  { key: "youtube", label: "YouTube", href: "https://youtube.com/@odenta" },
+  { key: "instagram", label: "Instagram", handle: "@odenta.eg", href: "https://www.instagram.com/odenta.eg/" },
+  { key: "linkedin", label: "LinkedIn", handle: "Odenta", href: "https://www.linkedin.com/company/odenta-eg" },
 ];
 
 export const footerColumns = [
   {
-    key: "platform",
-    title: { en: "Platform", ar: "المنصة" },
+    key: "explore",
+    title: { en: "Explore", ar: "استكشف" },
     links: [
+      { label: { en: "Universities", ar: "الجامعات" }, to: site.universities },
+      { label: { en: "Clinics", ar: "العيادات" }, to: site.clinics },
       { label: { en: "Services", ar: "الخدمات" }, to: site.services },
-      { label: { en: "For universities", ar: "للجامعات" }, to: site.universityServices },
-      { label: { en: "Partner universities", ar: "الجامعات الشريكة" }, to: site.universities },
-      { label: { en: "For clinics", ar: "للعيادات" }, to: site.clinics },
-      { label: { en: "Pricing", ar: "الأسعار" }, to: site.pricing },
-      { label: { en: "Try our AI", ar: "جرّب الذكاء الاصطناعي" }, to: site.tryAi },
-    ],
-  },
-  {
-    key: "patients",
-    title: { en: "Patients", ar: "المرضى" },
-    links: [
-      { label: { en: "Book a visit", ar: "احجز موعدًا" }, to: site.book },
-      { label: { en: "University clinics", ar: "عيادات الجامعات" }, to: site.universities },
-      { label: { en: "Contact the clinic", ar: "تواصل مع العيادة" }, to: site.contact },
     ],
   },
   {
     key: "company",
-    title: { en: "Company", ar: "الشركة" },
+    title: { en: "Odenta", ar: "أودنتا" },
     links: [
-      { label: { en: "About Odenta", ar: "عن أودنتا" }, to: site.about },
+      { label: { en: "Book a demo", ar: "احجز عرضًا" }, to: site.demo },
       { label: { en: "Contact", ar: "تواصل معنا" }, to: site.contact },
-      { label: { en: "Sign in", ar: "تسجيل الدخول" }, to: auth.signIn },
+      { label: { en: "Login", ar: "تسجيل الدخول" }, to: auth.signIn },
     ],
   },
   {
     key: "legal",
     title: { en: "Legal", ar: "قانوني" },
     links: [
-      { label: { en: "Privacy policy", ar: "سياسة الخصوصية" }, to: site.privacy },
-      { label: { en: "Terms of service", ar: "شروط الخدمة" }, to: site.terms },
+      { label: { en: "Privacy", ar: "الخصوصية" }, to: site.privacy },
+      { label: { en: "Terms", ar: "الشروط" }, to: site.terms },
     ],
   },
 ];
 
 export const footerCopy = {
   description: {
-    en: "Odenta pairs clinical-grade AI imaging with the day-to-day workflow of a dental school and a dental clinic — one patient record, every role.",
-    ar: "تجمع أودنتا بين تحليل الأشعة بالذكاء الاصطناعي وسير العمل اليومي لكليات وعيادات طب الأسنان — سجل واحد للمريض، وكل الأدوار.",
+    en: "The future of dentistry, connected. One digital ecosystem for dental universities, clinics and the people they care for.",
+    ar: "مستقبل طب الأسنان، متصل. منظومة رقمية واحدة لكليات طب الأسنان والعيادات ومن يرعونهم.",
   },
-  newsletterTitle: { en: "Stay in the loop", ar: "ابقَ على اطلاع" },
-  newsletterBody: {
-    en: "Product releases, clinical research and university programme news. One email a month.",
-    ar: "تحديثات المنتج وأبحاث سريرية وأخبار البرامج الجامعية. رسالة واحدة شهريًا.",
-  },
-  newsletterPlaceholder: { en: "Your work email", ar: "بريدك الإلكتروني" },
-  newsletterCta: { en: "Subscribe", ar: "اشترك" },
-  newsletterDone: { en: "You're on the list — thank you.", ar: "تم الاشتراك — شكرًا لك." },
-  rights: {
-    en: "Odenta. All rights reserved.",
-    ar: "أودنتا. جميع الحقوق محفوظة.",
-  },
+  rights: { en: "Odenta. All rights reserved.", ar: "أودنتا. جميع الحقوق محفوظة." },
+  madeIn: { en: "Designed and built in Egypt.", ar: "صُمم وبُني في مصر." },
 };
 
 export const common = {
   learnMore: { en: "Learn more", ar: "اعرف المزيد" },
   getStarted: { en: "Get started", ar: "ابدأ الآن" },
-  bookDemo: { en: "Book a demo", ar: "احجز عرضًا توضيحيًا" },
+  bookDemo: { en: "Book a demo", ar: "احجز عرضًا" },
   talkToUs: { en: "Talk to us", ar: "تحدث إلينا" },
+  contactUs: { en: "Contact us", ar: "تواصل معنا" },
   explore: { en: "Explore", ar: "استكشف" },
   openPortal: { en: "Open the portal", ar: "افتح البوابة" },
   bookVisit: { en: "Book a visit", ar: "احجز موعدًا" },

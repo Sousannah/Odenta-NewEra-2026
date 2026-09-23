@@ -31,6 +31,7 @@ const BookingConfirmationPage = lazy(() => import("@/site/pages/BookingConfirmat
 const ClinicsPage = lazy(() => import("@/site/pages/ClinicsPage"));
 const AboutPage = lazy(() => import("@/site/pages/AboutPage"));
 const ContactPage = lazy(() => import("@/site/pages/ContactPage"));
+const DemoPage = lazy(() => import("@/site/pages/DemoPage"));
 const TryAiPage = lazy(() => import("@/site/pages/TryAiPage"));
 const PricingPage = lazy(() => import("@/site/pages/PricingPage"));
 const LegalPage = lazy(() => import("@/site/pages/LegalPage"));
@@ -247,6 +248,7 @@ export const router = createBrowserRouter([
       publicRoute(site.clinics, ClinicsPage),
       publicRoute(site.about, AboutPage),
       publicRoute(site.contact, ContactPage),
+      publicRoute(site.demo, DemoPage),
       publicRoute(site.tryAi, TryAiPage),
       publicRoute(site.pricing, PricingPage),
       publicRoute(site.privacy, LegalPage, { document: "privacy" }),

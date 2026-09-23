@@ -1,257 +1,175 @@
 import {
-  Activity,
-  BarChart3,
-  Brain,
-  CalendarCheck,
-  ClipboardCheck,
+  Building2,
+  FileHeart,
   GraduationCap,
-  Lock,
-  ScanLine,
+  Languages,
+  Layers,
   ShieldCheck,
+  Smartphone,
   Stethoscope,
-  Users,
-  Workflow,
+  UserRound,
 } from "lucide-react";
-import { site, auth } from "@/config/paths";
-import { images } from "@/theme/assets";
+import { site } from "@/config/paths";
 
-/** Home page copy. Strings are `{ en, ar }`; `useT()` resolves them. */
+/**
+ * Home page copy. Strings are `{ en, ar }`; `useT()` resolves them.
+ *
+ * Voice: the Odenta posts — "The Future of Dentistry, Connected. One Digital
+ * Ecosystem. Built for What's Next." Calm, confident, short. What the platform
+ * will do next is deliberately teased, not listed.
+ */
 
 export const hero = {
-  eyebrow: { en: "AI dental platform", ar: "منصة أسنان بالذكاء الاصطناعي" },
-  title: { en: "Revolutionising", ar: "ثورة في" },
-  highlight: { en: "dental care with AI", ar: "رعاية الأسنان بالذكاء الاصطناعي" },
+  title: { en: "The future of dentistry,", ar: "مستقبل طب الأسنان،" },
+  highlight: { en: "connected.", ar: "متصل." },
   description: {
-    en: "Odenta joins clinical-grade radiograph analysis to the everyday work of a dental school and a dental clinic — charting, supervision, scheduling and billing on one patient record.",
-    ar: "تجمع أودنتا بين تحليل الأشعة بجودة سريرية والعمل اليومي لكليات وعيادات الأسنان — الرسم البياني والإشراف والجدولة والفوترة على سجل واحد للمريض.",
+    en: "One digital ecosystem for dental universities, clinics and the patients they care for. Built for what's next.",
+    ar: "منظومة رقمية واحدة لكليات طب الأسنان والعيادات والمرضى الذين يرعونهم. مبنية لما هو قادم.",
   },
-  primary: { label: { en: "Explore the platform", ar: "استكشف المنصة" }, to: site.services },
-  secondary: { label: { en: "Try our AI", ar: "جرّب الذكاء الاصطناعي" }, to: site.tryAi },
-  image: images.heroClinician,
-  imageAlt: {
-    en: "Clinician reviewing an AI-annotated dental radiograph",
-    ar: "طبيب يراجع أشعة أسنان محللة بالذكاء الاصطناعي",
-  },
-  badge: {
-    value: "95%",
-    label: { en: "AI detection accuracy", ar: "دقة الاكتشاف بالذكاء الاصطناعي" },
-  },
+  primary: { label: { en: "Book a demo", ar: "احجز عرضًا" }, to: site.demo },
+  secondary: { label: { en: "Explore universities", ar: "استكشف الجامعات" }, to: site.universities },
+  nodes: [
+    { key: "universities", icon: GraduationCap, label: { en: "Universities", ar: "الجامعات" } },
+    { key: "clinics", icon: Building2, label: { en: "Clinics", ar: "العيادات" } },
+    { key: "patients", icon: UserRound, label: { en: "Patients", ar: "المرضى" } },
+  ],
 };
 
-export const trustStats = [
-  { key: "accuracy", value: "95%", label: { en: "Detection accuracy", ar: "دقة الاكتشاف" } },
-  { key: "cases", value: "69k+", label: { en: "Cases reviewed", ar: "حالة تمت مراجعتها" } },
-  { key: "students", value: "2,240", label: { en: "Students on Odenta", ar: "طالب على أودنتا" } },
-  { key: "time", value: "2.4s", label: { en: "Average analysis time", ar: "متوسط زمن التحليل" } },
-];
-
-export const features = [
-  {
-    key: "ai-xray",
-    icon: ScanLine,
-    title: { en: "AI X-ray analysis", ar: "تحليل الأشعة بالذكاء الاصطناعي" },
-    description: {
-      en: "Caries, periapical lesions, bone loss and impactions detected on panoramic, periapical and bitewing films — each finding boxed, scored and tied to an FDI tooth number.",
-      ar: "اكتشاف التسوس والآفات حول الذروية وفقدان العظم والانطمار على الأشعة البانورامية والذروية — كل نتيجة محددة ومُقيّمة ومرتبطة برقم السن.",
-    },
-    cta: { en: "See it work", ar: "شاهده يعمل" },
-    to: site.tryAi,
-  },
-  {
-    key: "student-workflow",
-    icon: GraduationCap,
-    title: { en: "Student workflow", ar: "سير عمل الطالب" },
-    description: {
-      en: "Case allocation, requirement tracking and department sheets for operative, endodontics, prosthodontics and periodontics — the whole rotation in one queue.",
-      ar: "توزيع الحالات وتتبع المتطلبات وأوراق الأقسام — التدريب السريري بالكامل في قائمة واحدة.",
-    },
-    cta: { en: "For universities", ar: "للجامعات" },
-    to: site.universities,
-  },
-  {
-    key: "supervisor-review",
-    icon: ClipboardCheck,
-    title: { en: "Supervisor review", ar: "مراجعة المشرف" },
-    description: {
-      en: "Step-by-step sign-off with annotations, grades and a signature trail. Every approval is attributable, timestamped and exportable for accreditation.",
-      ar: "اعتماد خطوة بخطوة مع الملاحظات والدرجات وسجل التوقيع. كل موافقة موثقة بالوقت وقابلة للتصدير للاعتماد.",
-    },
-  },
-  {
-    key: "charting",
-    icon: Stethoscope,
-    title: { en: "Digital charting", ar: "الرسم البياني الرقمي" },
-    description: {
-      en: "A surface-level odontogram in FDI, Universal and Palmer notation, with six-point periodontal charting and ICDAS caries scoring built in.",
-      ar: "مخطط أسنان بمستوى الأسطح بترقيم FDI وUniversal وPalmer، مع رسم لثوي بست نقاط وتصنيف ICDAS للتسوس.",
-    },
-  },
-  {
-    key: "analytics",
-    icon: BarChart3,
-    title: { en: "Practice analytics", ar: "تحليلات الممارسة" },
-    description: {
-      en: "Chair utilisation, revenue per treatment, student competency progress and supervisor turnaround — reported per clinic, per department, per person.",
-      ar: "استغلال الكراسي والإيراد لكل علاج وتقدم كفاءة الطلاب وسرعة استجابة المشرفين — تقارير لكل عيادة وقسم وشخص.",
-    },
-  },
-  {
-    key: "appointments",
-    icon: CalendarCheck,
-    title: { en: "Scheduling & recalls", ar: "الجدولة والمتابعة" },
-    description: {
-      en: "Chair-by-chair calendar, waitlist, check-in and automated recalls — with the front desk taking payment without ever opening a clinical note.",
-      ar: "تقويم لكل كرسي وقائمة انتظار وتسجيل وصول ومتابعات تلقائية — مع تحصيل الاستقبال للمدفوعات دون فتح أي ملاحظة سريرية.",
-    },
-  },
-];
-
-export const aiSection = {
-  eyebrow: { en: "The model", ar: "النموذج" },
-  title: { en: "Powered by", ar: "مدعوم بـ" },
-  highlight: { en: "advanced AI", ar: "ذكاء اصطناعي متقدم" },
+export const ecosystem = {
+  eyebrow: { en: "One digital ecosystem", ar: "منظومة رقمية واحدة" },
+  title: { en: "Everyone in dentistry,", ar: "كل من في طب الأسنان،" },
+  highlight: { en: "on the same page.", ar: "على صفحة واحدة." },
   description: {
-    en: "Odenta Vision is trained on annotated clinical radiographs and validated against specialist consensus. It reports what it sees, how sure it is, and where — never a diagnosis without evidence.",
-    ar: "تم تدريب Odenta Vision على أشعة سريرية موصوفة والتحقق منه مقابل إجماع الأخصائيين. يقدم ما يراه ومدى ثقته وموضعه — لا تشخيص دون دليل.",
+    en: "Dental schools, private clinics and patients have always worked in separate worlds. Odenta brings them into one — so care flows, and nothing gets lost in between.",
+    ar: "عاشت كليات طب الأسنان والعيادات الخاصة والمرضى دائمًا في عوالم منفصلة. أودنتا تجمعهم في عالم واحد — لتنساب الرعاية ولا يضيع شيء بينهم.",
   },
-  image: images.xray,
-  imageAlt: { en: "Annotated dental radiograph", ar: "أشعة أسنان موصوفة" },
-  points: [
+  pillars: [
     {
-      key: "realtime",
-      icon: Brain,
-      title: { en: "Real-time analysis", ar: "تحليل فوري" },
-      description: {
-        en: "Results in about two seconds, with bounding boxes drawn over the film and a confidence score on every finding.",
-        ar: "نتائج خلال ثانيتين تقريبًا، مع مربعات تحديد على الصورة ودرجة ثقة لكل نتيجة.",
-      },
-    },
-    {
-      key: "accuracy",
-      icon: ShieldCheck,
-      title: { en: "Clinical accuracy", ar: "دقة سريرية" },
-      description: {
-        en: "95% detection accuracy across common conditions, measured against dentist-labelled ground truth rather than a held-out split alone.",
-        ar: "دقة اكتشاف ٩٥٪ في الحالات الشائعة، مقاسة مقابل تصنيف أطباء الأسنان.",
-      },
-    },
-    {
-      key: "learning",
+      key: "universities",
       icon: GraduationCap,
-      title: { en: "Learning assistant", ar: "مساعد تعليمي" },
+      title: { en: "For universities", ar: "للجامعات" },
       description: {
-        en: "Students compare their own reading to the model's, and supervisors see both — disagreement becomes a teaching moment, not a hidden error.",
-        ar: "يقارن الطلاب قراءتهم بقراءة النموذج، ويرى المشرفون الاثنين — الاختلاف يصبح فرصة تعليمية لا خطأً مخفيًا.",
+        en: "Clinical teaching without the paper. Every case, every supervisor sign-off and every student milestone — in one place.",
+        ar: "تعليم سريري بلا ورق. كل حالة، وكل اعتماد من المشرف، وكل إنجاز للطالب — في مكان واحد.",
       },
-    },
-  ],
-};
-
-export const workflow = {
-  eyebrow: { en: "How it works", ar: "كيف تعمل" },
-  title: { en: "A simple", ar: "سير عمل" },
-  highlight: { en: "workflow", ar: "بسيط" },
-  description: {
-    en: "Three steps from an unassigned patient to a signed-off, billed case — the same path whether you run a teaching hospital or a five-chair practice.",
-    ar: "ثلاث خطوات من مريض غير مخصص إلى حالة معتمدة ومفوترة — نفس المسار سواء كنت مستشفى تعليميًا أو عيادة بخمسة كراسي.",
-  },
-  steps: [
-    {
-      key: "capture",
-      number: "1",
-      icon: Users,
-      title: { en: "Capture the case", ar: "سجّل الحالة" },
-      image: images.dashboard,
-      points: [
-        { en: "Register the patient and pull the medical history", ar: "سجّل المريض واستدعِ التاريخ الطبي" },
-        { en: "Upload radiographs and clinical photography", ar: "ارفع الأشعة والصور السريرية" },
-        { en: "Chart existing conditions on the odontogram", ar: "سجّل الحالات القائمة على مخطط الأسنان" },
-      ],
-      cta: { label: { en: "University tools", ar: "أدوات الجامعة" }, to: site.universities },
+      to: site.universities,
+      cta: { en: "See universities", ar: "شاهد الجامعات" },
     },
     {
-      key: "analyse",
-      number: "2",
-      icon: Brain,
-      title: { en: "Analyse and plan", ar: "حلّل وخطّط" },
-      image: images.aiAnalysis,
-      points: [
-        { en: "AI returns boxed findings with confidence scores", ar: "يعيد الذكاء الاصطناعي نتائج محددة بدرجات ثقة" },
-        { en: "Build a CDT-coded treatment plan from the findings", ar: "ابنِ خطة علاج مرمّزة انطلاقًا من النتائج" },
-        { en: "Capture consent and estimate the patient's share", ar: "وثّق الموافقة وقدّر حصة المريض" },
-      ],
-      cta: { label: { en: "Try our AI", ar: "جرّب الذكاء الاصطناعي" }, to: site.tryAi },
-    },
-    {
-      key: "deliver",
-      number: "3",
-      icon: Workflow,
-      title: { en: "Deliver and sign off", ar: "نفّذ واعتمد" },
-      image: images.dashboardAlt,
-      points: [
-        { en: "Supervisor reviews each step and signs it", ar: "يراجع المشرف كل خطوة ويعتمدها" },
-        { en: "Lab cases, sterilisation and stock move with the case", ar: "تتحرك حالات المعمل والتعقيم والمخزون مع الحالة" },
-        { en: "Front desk bills, takes payment and books the recall", ar: "يفوتر الاستقبال ويحصّل ويحجز المتابعة" },
-      ],
-      cta: { label: { en: "Clinic tools", ar: "أدوات العيادة" }, to: site.clinics },
-    },
-  ],
-};
-
-export const rolesSection = {
-  eyebrow: { en: "Role based", ar: "قائم على الأدوار" },
-  title: { en: "One record.", ar: "سجل واحد." },
-  highlight: { en: "Four ways of working.", ar: "أربع طرق للعمل." },
-  description: {
-    en: "Four roles, because that is what a clinic here actually has. Everyone who touches a case gets a dashboard shaped around their job — and sees only what that job needs. The split is enforced by permissions, not by convention.",
-    ar: "أربعة أدوار، لأن هذا ما تحتاجه العيادة فعليًا. كل من يتعامل مع الحالة لديه لوحة مصممة لعمله — ويرى فقط ما يحتاجه. الفصل مفروض بالصلاحيات لا بالعُرف.",
-  },
-  cta: { label: { en: "Sign in to the portal", ar: "ادخل إلى البوابة" }, to: auth.signIn },
-  roles: [
-    { key: "owner", label: { en: "Clinic owner", ar: "مالك العيادة" }, description: { en: "Revenue, chair utilisation, outstanding balances and the team", ar: "الإيرادات واستغلال الكراسي والمستحقات والفريق" } },
-    { key: "dentist", label: { en: "Dentist", ar: "طبيب الأسنان" }, description: { en: "Today's list, charting, plans, prescriptions and lab work", ar: "قائمة اليوم والرسم والخطط والوصفات وأعمال المعمل" } },
-    { key: "assistant", label: { en: "Dental assistant", ar: "مساعد الأسنان" }, description: { en: "Room turnover, sterilisation log, consumables and impressions", ar: "تجهيز الغرف وسجل التعقيم والمستهلكات والطبعات" } },
-    { key: "receptionist", label: { en: "Reception", ar: "الاستقبال" }, description: { en: "Booking, check-in, recalls, payment and chasing the lab", ar: "الحجز والتسجيل والمتابعات والدفع ومتابعة المعمل" } },
-  ],
-};
-
-export const trustSection = {
-  eyebrow: { en: "Built for clinical data", ar: "مبني لبيانات سريرية" },
-  title: { en: "Patient data handled", ar: "بيانات المرضى تُدار" },
-  highlight: { en: "the way it should be", ar: "كما ينبغي" },
-  points: [
-    {
-      key: "permissions",
-      icon: Lock,
-      title: { en: "Least privilege by default", ar: "أقل صلاحية افتراضيًا" },
+      key: "clinics",
+      icon: Stethoscope,
+      title: { en: "For clinics", ar: "للعيادات" },
       description: {
-        en: "Demographics and clinical records are separate permissions. A receptionist can take a payment without opening a treatment note.",
-        ar: "البيانات الشخصية والسجلات السريرية صلاحيات منفصلة. يمكن للاستقبال تحصيل الدفع دون فتح ملاحظة علاجية.",
+        en: "Your whole day, beautifully organised. From the first appointment to the final receipt, with your team in sync.",
+        ar: "يومك بالكامل، منظم بأناقة. من أول موعد حتى آخر إيصال، وفريقك في تناغم تام.",
+      },
+      to: site.clinics,
+      cta: { en: "See clinics", ar: "شاهد العيادات" },
+    },
+    {
+      key: "patients",
+      icon: FileHeart,
+      title: { en: "For patients", ar: "للمرضى" },
+      description: {
+        en: "Care that remembers you. Book a visit in a teaching clinic, and carry one record wherever your treatment goes.",
+        ar: "رعاية تتذكرك. احجز زيارتك في عيادة جامعية، واحمل سجلًا واحدًا أينما ذهب علاجك.",
+      },
+      to: site.universities,
+      cta: { en: "Find a clinic", ar: "ابحث عن عيادة" },
+    },
+  ],
+};
+
+export const principles = {
+  eyebrow: { en: "Designed with intent", ar: "مصمم بعناية" },
+  title: { en: "Smarter dentistry", ar: "طب أسنان أذكى" },
+  highlight: { en: "starts with better tools.", ar: "يبدأ بأدوات أفضل." },
+  items: [
+    {
+      key: "record",
+      icon: Layers,
+      size: "wide",
+      title: { en: "One record. Every role.", ar: "سجل واحد. لكل الأدوار." },
+      description: {
+        en: "Students, supervisors, dentists, assistants and the front desk each see exactly what their work needs — all from the same patient story.",
+        ar: "الطلاب والمشرفون والأطباء والمساعدون والاستقبال، يرى كل منهم ما يحتاجه عمله بالضبط — من قصة المريض نفسها.",
       },
     },
     {
-      key: "audit",
-      icon: Activity,
-      title: { en: "Every read is logged", ar: "كل اطلاع مُسجّل" },
+      key: "secure",
+      icon: ShieldCheck,
+      title: { en: "Private by design", ar: "خصوصية من الأساس" },
       description: {
-        en: "Who opened which record, when, and from where — an audit trail an accreditation review can actually work through.",
-        ar: "من فتح أي سجل ومتى ومن أين — سجل مراجعة يمكن لجهة الاعتماد العمل عليه فعلًا.",
+        en: "Role-based access and a complete audit trail. Patient data stays where it belongs.",
+        ar: "صلاحيات حسب الدور وسجل مراجعة كامل. بيانات المريض تبقى في مكانها.",
+      },
+    },
+    {
+      key: "language",
+      icon: Languages,
+      title: { en: "Arabic & English", ar: "العربية والإنجليزية" },
+      description: {
+        en: "Fully bilingual, right-to-left native. Built in Egypt, for the region.",
+        ar: "ثنائي اللغة بالكامل، ويدعم الكتابة من اليمين أصلًا. صُنع في مصر، للمنطقة.",
+      },
+    },
+    {
+      key: "everywhere",
+      icon: Smartphone,
+      title: { en: "Wherever you work", ar: "أينما كنت تعمل" },
+      description: {
+        en: "At the chair, at the desk, or on the move — on the web and on your phone.",
+        ar: "عند الكرسي، أو على المكتب، أو أثناء التنقل — على الويب وعلى هاتفك.",
+      },
+    },
+    {
+      key: "chair",
+      icon: UserRound,
+      title: { en: "Shaped at the chair", ar: "صُمم عند الكرسي" },
+      description: {
+        en: "Designed alongside students, supervisors and clinicians — not in a boardroom.",
+        ar: "صُمم مع الطلاب والمشرفين والأطباء — لا في قاعة اجتماعات.",
       },
     },
     {
       key: "standards",
-      icon: ShieldCheck,
-      title: { en: "Standards, not conventions", ar: "معايير لا أعراف" },
+      icon: Stethoscope,
+      size: "full",
+      title: { en: "Speaks the language of dentistry", ar: "يتحدث لغة طب الأسنان" },
       description: {
-        en: "FDI tooth identity, ICDAS caries scoring, CDT procedure codes and six-point perio depths — stored as data, not as free text.",
-        ar: "ترقيم FDI وتصنيف ICDAS ورموز CDT وأعماق اللثة بست نقاط — مخزّنة كبيانات لا كنص حر.",
+        en: "Digital charting, periodontal records and treatment plans built on the clinical standards dentists already trust — nothing to relearn.",
+        ar: "مخططات أسنان رقمية وسجلات لثة وخطط علاج مبنية على المعايير السريرية التي يثق بها الأطباء — لا شيء لتتعلمه من جديد.",
       },
     },
   ],
 };
 
-export const testimonialsSection = {
-  eyebrow: { en: "From the chairs", ar: "من الكراسي" },
-  title: { en: "What clinicians", ar: "ماذا يقول" },
-  highlight: { en: "tell us", ar: "الأطباء" },
+export const origin = {
+  eyebrow: { en: "Where it began", ar: "من أين بدأنا" },
+  title: { en: "Born in a", ar: "وُلدت في" },
+  highlight: { en: "dental school.", ar: "كلية طب أسنان." },
+  description: {
+    en: "Odenta was built at Alamein International University, side by side with the students, supervisors and clinicians who use it every day. Every screen was shaped at a real dental chair.",
+    ar: "بُنيت أودنتا في جامعة العلمين الدولية، جنبًا إلى جنب مع الطلاب والمشرفين والأطباء الذين يستخدمونها كل يوم. كل شاشة تشكّلت عند كرسي أسنان حقيقي.",
+  },
+  cta: { label: { en: "Our universities", ar: "جامعاتنا" }, to: site.universities },
+};
+
+export const teaser = {
+  kicker: { en: "Something", ar: "شيء ما" },
+  title: { en: "is coming.", ar: "قادم." },
+  description: {
+    en: "We're building what comes next for dentistry. The future is closer than you think.",
+    ar: "نحن نبني ما هو قادم لطب الأسنان. المستقبل أقرب مما تظن.",
+  },
+  cta: { en: "Follow the journey", ar: "تابع الرحلة" },
+};
+
+export const closing = {
+  title: { en: "Built for", ar: "مبنية" },
+  highlight: { en: "what's next.", ar: "لما هو قادم." },
+  description: {
+    en: "Bring your university or clinic into one connected ecosystem. We'll show you around, live, in thirty minutes.",
+    ar: "انضم بجامعتك أو عيادتك إلى منظومة واحدة متصلة. سنأخذك في جولة مباشرة خلال ثلاثين دقيقة.",
+  },
 };

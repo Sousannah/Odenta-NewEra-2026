@@ -1,389 +1,261 @@
-import { ArrowRight, Check, Play, Sparkles } from "lucide-react";
+import { Link } from "react-router-dom";
+import { ArrowRight, Instagram } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { site } from "@/config/paths";
-import { useAsync } from "@/hooks";
-import { siteService } from "@/services";
 import { useLanguage, useT } from "@/site/i18n/LanguageContext";
-import {
-  aiSection,
-  features,
-  hero,
-  rolesSection,
-  testimonialsSection,
-  trustSection,
-  trustStats,
-  workflow,
-} from "@/site/content/home";
-import {
-  CTABand,
-  FeatureCard,
-  FeatureRow,
-  Reveal,
-  Section,
-  SectionHeading,
-  SiteButton,
-  StatStrip,
-} from "@/site/components";
+import { images, universityLogos } from "@/theme/assets";
+import { slogan, socialLinks } from "@/site/content/navigation";
+import { closing, ecosystem, hero, origin, principles, teaser } from "@/site/content/home";
+import { CTABand, Reveal, Section, SectionHeading, SiteButton } from "@/site/components";
+import { GlowArch } from "@/site/components/GlowArch";
 
-/* --------------------------------------------------------------------- hero */
+const Arrow = ({ className }) => {
+  const { isRtl } = useLanguage();
+  return <ArrowRight className={cn("h-4 w-4", isRtl && "rotate-180", className)} />;
+};
+
+/* ------------------------------------------------------------------ hero */
+
+/* where each ecosystem node floats around the tooth, as % of the stage */
+const NODE_POSITIONS = [
+  "start-[2%] top-[22%] sm:start-[6%]",
+  "end-[2%] top-[22%] sm:end-[6%]",
+  "start-1/2 -translate-x-1/2 bottom-[-4%] rtl:translate-x-1/2",
+];
 
 function Hero() {
   const t = useT();
-  const { isRtl } = useLanguage();
 
   return (
-    <section className="relative overflow-hidden bg-white bg-od-radial">
-      <div className="od-container grid items-center gap-14 py-16 lg:grid-cols-2 lg:gap-8 lg:py-24">
-        <Reveal className="max-w-xl">
-          <span className="od-eyebrow">
-            <Sparkles className="h-3.5 w-3.5" />
-            {t(hero.eyebrow)}
-          </span>
+    <section className="relative overflow-hidden pb-10 pt-16 sm:pt-20 lg:pt-28">
+      <div className="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
+        <Reveal className="mx-auto flex max-w-5xl flex-col items-center text-center">
+          <p className="s-kicker">{t(slogan)}</p>
 
-          <h1 className="mt-6 text-[40px] font-extrabold leading-[1.08] tracking-tight text-brand-700 md:text-[56px]">
-            {t(hero.title)} <span className="od-gradient-text">{t(hero.highlight)}</span>
+          <h1 className="s-display mt-7">
+            {t(hero.title)}
+            <br />
+            <span className="s-grad-text">{t(hero.highlight)}</span>
           </h1>
 
-          <p className="mt-6 text-[17px] leading-relaxed text-ink-muted">{t(hero.description)}</p>
+          <p className="s-lead mx-auto mt-7 max-w-2xl">{t(hero.description)}</p>
 
-          <div className="mt-9 flex flex-col gap-4 sm:flex-row">
-            <SiteButton
-              to={hero.primary.to}
-              rightIcon={<ArrowRight className={cn("h-4 w-4", isRtl && "rotate-180")} />}
-            >
+          <div className="mt-10 flex flex-col items-center gap-3 sm:flex-row">
+            <SiteButton size="lg" to={hero.primary.to} rightIcon={<Arrow />}>
               {t(hero.primary.label)}
             </SiteButton>
-            <SiteButton variant="ghost" to={hero.secondary.to} leftIcon={<Play className="h-4 w-4" />}>
+            <SiteButton size="lg" variant="glass" to={hero.secondary.to}>
               {t(hero.secondary.label)}
             </SiteButton>
           </div>
         </Reveal>
 
-        <Reveal delay={160} className="relative mx-auto w-full max-w-[540px]">
-          {/* decorative rings behind the portrait */}
-          <div className="pointer-events-none absolute -inset-6 rounded-full bg-od-gradient opacity-[0.07] blur-2xl" />
-          <div className="pointer-events-none absolute -end-6 -top-6 h-24 w-24 rounded-full border-[10px] border-accent-100" />
-          <div className="pointer-events-none absolute -bottom-8 -start-6 h-32 w-32 rounded-full bg-brand-50" />
+        <Reveal delay={200} className="relative mx-auto mt-10 max-w-3xl sm:mt-14">
+          <GlowArch className="s-float mx-auto max-w-[620px]" />
 
-          <div className="relative overflow-hidden rounded-[36px] border border-white shadow-lift">
-            <img
-              src={hero.image}
-              alt={t(hero.imageAlt)}
-              className="aspect-[4/5] w-full object-cover"
-              loading="eager"
-            />
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-brand-900/35 via-transparent to-transparent" />
-          </div>
-
-          {/* floating accuracy chip */}
-          <div className="absolute -bottom-6 start-4 flex items-center gap-3 rounded-2xl border border-slate-100 bg-white/95 px-5 py-4 shadow-pop backdrop-blur animate-float">
-            <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-od-gradient text-white">
-              <Sparkles className="h-5 w-5" />
-            </span>
-            <span>
-              <span className="block text-[22px] font-extrabold leading-none od-gradient-text">
-                {hero.badge.value}
+          {hero.nodes.map((node, index) => {
+            const Icon = node.icon;
+            return (
+              <span
+                key={node.key}
+                className={cn(
+                  "s-glass absolute flex items-center gap-2 rounded-full py-1.5 pe-4 ps-1.5 text-[13.5px] font-medium sm:text-[14.5px]",
+                  NODE_POSITIONS[index]
+                )}
+              >
+                <span className="s-icon-tile h-8 w-8 !rounded-full">
+                  <Icon className="h-4 w-4" />
+                </span>
+                {t(node.label)}
               </span>
-              <span className="mt-1 block text-[12px] font-semibold text-ink-muted">
-                {t(hero.badge.label)}
-              </span>
-            </span>
-          </div>
+            );
+          })}
         </Reveal>
-      </div>
-
-      <div className="od-container pb-16 lg:pb-20">
-        <StatStrip stats={trustStats} />
       </div>
     </section>
   );
 }
 
-/* ----------------------------------------------------------------- AI panel */
+/* ------------------------------------------------------------- ecosystem */
 
-function AiSection() {
+function Ecosystem() {
   const t = useT();
-  const { isRtl } = useLanguage();
 
   return (
-    <Section tone="plain">
-      <div className="grid items-center gap-14 lg:grid-cols-2">
-        <div>
-          <SectionHeading
-            align="start"
-            eyebrow={aiSection.eyebrow}
-            eyebrowIcon={<Sparkles className="h-3.5 w-3.5" />}
-            title={aiSection.title}
-            highlight={aiSection.highlight}
-            description={aiSection.description}
-          />
-
-          <div className="mt-10 flex flex-col gap-7">
-            {aiSection.points.map((point, index) => (
-              <FeatureRow key={point.key} feature={point} delay={index * 90} />
-            ))}
-          </div>
-        </div>
-
-        <Reveal delay={120} className="relative">
-          <div className="rounded-[32px] border border-accent-200/70 bg-white p-4 shadow-lift">
-            <div className="overflow-hidden rounded-3xl bg-ink">
-              <img
-                src={aiSection.image}
-                alt={t(aiSection.imageAlt)}
-                className="aspect-[16/11] w-full object-cover opacity-95"
-                loading="lazy"
-              />
-            </div>
-
-            <div className="flex flex-wrap items-center justify-between gap-4 px-3 pb-1 pt-5">
-              <span className="flex items-center gap-2 text-[13px] font-bold text-ink-muted">
-                <span className="h-2 w-2 rounded-full bg-success" />
-                odenta-vision-3.1
-              </span>
-              <SiteButton
-                variant="link"
-                to={site.tryAi}
-                rightIcon={<ArrowRight className={cn("h-4 w-4", isRtl && "rotate-180")} />}
-              >
-                {t({ en: "Run the demo", ar: "شغّل العرض" })}
-              </SiteButton>
-            </div>
-          </div>
-        </Reveal>
-      </div>
-    </Section>
-  );
-}
-
-/* ---------------------------------------------------------------- workflow */
-
-function WorkflowSection() {
-  const t = useT();
-  const { isRtl } = useLanguage();
-
-  return (
-    <Section tone="soft">
+    <Section>
       <SectionHeading
-        eyebrow={workflow.eyebrow}
-        title={workflow.title}
-        highlight={workflow.highlight}
-        description={workflow.description}
+        eyebrow={ecosystem.eyebrow}
+        title={ecosystem.title}
+        highlight={ecosystem.highlight}
+        description={ecosystem.description}
       />
 
-      <div className="relative mt-16">
-        {/* spine down the middle of the timeline */}
-        <div className="pointer-events-none absolute inset-y-0 start-1/2 hidden w-0.5 -translate-x-1/2 bg-gradient-to-b from-brand-600 via-accent-500 to-transparent lg:block" />
-
-        <div className="flex flex-col gap-16 lg:gap-24">
-          {workflow.steps.map((step, index) => {
-            const Icon = step.icon;
-            const flipped = index % 2 === 1;
-
-            return (
-              <Reveal
-                key={step.key}
-                className={cn(
-                  "grid items-center gap-10 lg:grid-cols-2 lg:gap-16",
-                  flipped && "lg:[&>*:first-child]:order-2"
-                )}
+      <div className="relative mt-16 grid gap-5 md:grid-cols-3">
+        {ecosystem.pillars.map((pillar, index) => {
+          const Icon = pillar.icon;
+          return (
+            <Reveal key={pillar.key} delay={index * 110}>
+              <Link
+                to={pillar.to}
+                className="s-glass s-glass-hover s-focus group flex h-full flex-col rounded-[28px] p-8"
               >
-                <div>
-                  <div className="flex items-center gap-4">
-                    <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-od-gradient text-[24px] font-extrabold text-white shadow-brand">
-                      {step.number}
-                    </span>
-                    <h3 className="text-2xl font-extrabold text-brand-700">{t(step.title)}</h3>
-                  </div>
-
-                  <div className="mt-6 rounded-3xl border border-slate-200/80 bg-white p-7 shadow-card">
-                    <ul className="flex flex-col gap-4">
-                      {step.points.map((point, pointIndex) => (
-                        <li key={pointIndex} className="flex items-start gap-3">
-                          <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent-50 text-accent-600">
-                            <Check className="h-3.5 w-3.5" strokeWidth={3} />
-                          </span>
-                          <span className="text-[15px] leading-relaxed text-ink-muted">{t(point)}</span>
-                        </li>
-                      ))}
-                    </ul>
-
-                    {step.cta ? (
-                      <SiteButton
-                        variant="link"
-                        to={step.cta.to}
-                        className="mt-6"
-                        rightIcon={<ArrowRight className={cn("h-4 w-4", isRtl && "rotate-180")} />}
-                      >
-                        {t(step.cta.label)}
-                      </SiteButton>
-                    ) : null}
-                  </div>
-                </div>
-
-                <div className="relative">
-                  <div className="absolute -inset-1 rounded-[32px] bg-od-gradient opacity-20 blur-lg" />
-                  <div className="relative overflow-hidden rounded-[28px] border border-white bg-white shadow-lift">
-                    <img
-                      src={step.image}
-                      alt={t(step.title)}
-                      className="aspect-[16/10] w-full object-cover"
-                      loading="lazy"
-                    />
-                  </div>
-                  <span className="absolute -top-5 end-6 flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-accent-600 shadow-pop">
-                    <Icon className="h-5 w-5" strokeWidth={2.2} />
-                  </span>
-                </div>
-              </Reveal>
-            );
-          })}
-        </div>
-      </div>
-    </Section>
-  );
-}
-
-/* ------------------------------------------------------------------- roles */
-
-function RolesSection() {
-  const t = useT();
-  const { isRtl } = useLanguage();
-
-  return (
-    <Section tone="plain">
-      <div className="grid gap-12 lg:grid-cols-12 lg:gap-16">
-        <div className="lg:col-span-5">
-          <SectionHeading
-            align="start"
-            eyebrow={rolesSection.eyebrow}
-            title={rolesSection.title}
-            highlight={rolesSection.highlight}
-            description={rolesSection.description}
-          />
-          <Reveal delay={140} className="mt-8">
-            <SiteButton
-              to={rolesSection.cta.to}
-              rightIcon={<ArrowRight className={cn("h-4 w-4", isRtl && "rotate-180")} />}
-            >
-              {t(rolesSection.cta.label)}
-            </SiteButton>
-          </Reveal>
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-2 lg:col-span-7">
-          {rolesSection.roles.map((role, index) => (
-            <Reveal
-              key={role.key}
-              delay={index * 60}
-              className="group rounded-2xl border border-slate-200/80 bg-white p-5 transition duration-300 hover:-translate-y-1 hover:border-accent-300 hover:shadow-lift"
-            >
-              <span className="block text-[15px] font-extrabold text-brand-700 transition group-hover:text-accent-600">
-                {t(role.label)}
-              </span>
-              <span className="mt-1.5 block text-[13.5px] leading-relaxed text-ink-muted">
-                {t(role.description)}
-              </span>
+                <span className="s-icon-tile relative h-[52px] w-[52px]">
+                  <Icon className="h-6 w-6" />
+                </span>
+                <h3 className="mt-7 text-[22px]">{t(pillar.title)}</h3>
+                <p className="s-muted mt-3 flex-1 text-[15.5px] leading-relaxed">{t(pillar.description)}</p>
+                <span className="s-accent mt-7 inline-flex items-center gap-1.5 text-[15px] font-semibold transition-all group-hover:gap-2.5">
+                  {t(pillar.cta)}
+                  <Arrow />
+                </span>
+              </Link>
             </Reveal>
-          ))}
-        </div>
+          );
+        })}
       </div>
     </Section>
   );
 }
 
-/* ------------------------------------------------------------ testimonials */
+/* ------------------------------------------------------------ principles */
 
-function TestimonialsSection() {
+function Principles() {
   const t = useT();
-  const { data: testimonials } = useAsync(() => siteService.getTestimonials(), [], []);
-
-  if (!testimonials.length) return null;
 
   return (
-    <Section tone="canvas">
-      <SectionHeading
-        eyebrow={testimonialsSection.eyebrow}
-        title={testimonialsSection.title}
-        highlight={testimonialsSection.highlight}
-      />
+    <Section>
+      <SectionHeading eyebrow={principles.eyebrow} title={principles.title} highlight={principles.highlight} />
 
-      <div className="mt-14 grid gap-6 lg:grid-cols-3">
-        {testimonials.map((item, index) => (
-          <Reveal
-            key={item.id}
-            delay={index * 100}
-            className="flex flex-col rounded-3xl border border-slate-200/80 bg-white p-8 shadow-card transition duration-300 hover:-translate-y-1 hover:shadow-lift"
-          >
-            <span aria-hidden="true" className="text-[44px] font-black leading-none od-gradient-text">
-              &ldquo;
-            </span>
-            <p className="mt-2 flex-1 text-[15px] leading-relaxed text-ink-muted">{t(item.quote)}</p>
-
-            <div className="mt-7 flex items-center gap-3 border-t border-slate-100 pt-5">
-              <img
-                src={item.avatar}
-                alt=""
-                aria-hidden="true"
-                className="h-11 w-11 rounded-full object-cover ring-2 ring-accent-100"
-                loading="lazy"
-              />
-              <span>
-                <span className="block text-[14px] font-extrabold text-brand-700">{item.name}</span>
-                <span className="block text-[12.5px] text-ink-soft">{t(item.role)}</span>
+      <div className="mt-16 grid gap-5 md:grid-cols-3">
+        {principles.items.map((item, index) => {
+          const Icon = item.icon;
+          const wide = item.size === "wide" || item.size === "full";
+          return (
+            <Reveal
+              key={item.key}
+              delay={(index % 3) * 90}
+              className={cn(
+                "s-glass s-glass-hover flex flex-col justify-between rounded-[28px] p-8",
+                item.size === "wide" && "md:col-span-2",
+                item.size === "full" && "md:col-span-3"
+              )}
+            >
+              <span className="s-chip !h-11 !w-11 !justify-center !p-0">
+                <Icon className="s-accent h-5 w-5" />
               </span>
-            </div>
-          </Reveal>
-        ))}
+              <div className={cn("mt-8", wide && "max-w-xl")}>
+                <h3 className={cn(wide ? "text-[26px]" : "text-[20px]")}>{t(item.title)}</h3>
+                <p className="s-muted mt-3 text-[15.5px] leading-relaxed">{t(item.description)}</p>
+              </div>
+            </Reveal>
+          );
+        })}
       </div>
     </Section>
   );
 }
 
-/* -------------------------------------------------------------------- page */
+/* ---------------------------------------------------------------- origin */
+
+function Origin() {
+  const t = useT();
+
+  return (
+    <Section>
+      <Reveal className="s-glass grid overflow-hidden rounded-[36px] lg:grid-cols-2">
+        <div className="relative min-h-[280px] lg:min-h-[460px]">
+          <img
+            src={images.campus}
+            alt={t({ en: "Alamein International University campus", ar: "حرم جامعة العلمين الدولية" })}
+            className="absolute inset-0 h-full w-full object-cover"
+            loading="lazy"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent" />
+          <span className="s-glass absolute bottom-5 start-5 flex items-center gap-3 rounded-2xl py-2 pe-4 ps-2">
+            <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#fff] p-1.5">
+              <img src={universityLogos.aiu} alt="" aria-hidden="true" className="h-full w-full object-contain" />
+            </span>
+            <span className="text-[14px] font-semibold leading-tight">
+              {t({ en: "Alamein International University", ar: "جامعة العلمين الدولية" })}
+              <span className="s-muted block text-[12.5px] font-normal">
+                {t({ en: "Founding campus", ar: "الحرم المؤسس" })}
+              </span>
+            </span>
+          </span>
+        </div>
+
+        <div className="flex flex-col justify-center p-8 sm:p-12 lg:p-16">
+          <span className="s-kicker !text-[11px]">{t(origin.eyebrow)}</span>
+          <h2 className="s-title mt-5">
+            {t(origin.title)} <span className="s-grad-text">{t(origin.highlight)}</span>
+          </h2>
+          <p className="s-lead mt-6">{t(origin.description)}</p>
+          <div className="mt-9">
+            <SiteButton variant="glass" to={origin.cta.to} rightIcon={<Arrow />}>
+              {t(origin.cta.label)}
+            </SiteButton>
+          </div>
+        </div>
+      </Reveal>
+    </Section>
+  );
+}
+
+/* ---------------------------------------------------------------- teaser */
+
+/**
+ * "Something is coming." — dark in both themes, like the post it is lifted
+ * from. The only place the site hints at what is being built next.
+ */
+function Teaser() {
+  const t = useT();
+  const instagram = socialLinks.find((item) => item.key === "instagram");
+
+  return (
+    <Section>
+      <Reveal
+        className="relative overflow-hidden rounded-[36px] border border-cyan-300/15 px-6 pb-4 pt-16 text-center text-[#eaf5ff] sm:px-12 lg:pt-20"
+        style={{
+          background:
+            "radial-gradient(900px 420px at 50% 115%, rgba(40,200,220,0.35), transparent 60%), radial-gradient(600px 300px at 85% 0%, rgba(0,119,182,0.35), transparent 60%), linear-gradient(180deg, #041325 0%, #020912 100%)",
+          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08), 0 40px 90px -40px rgba(0, 60, 110, 0.7)",
+        }}
+      >
+        <p className="text-[13px] font-medium uppercase tracking-[0.5em] text-[#9fb8cc] rtl:tracking-[0.05em]">
+          {t(teaser.kicker)}
+        </p>
+        <h2 style={{ fontWeight: 300 }} className="mt-4 text-[clamp(2.6rem,7vw,5.6rem)] uppercase leading-none tracking-[0.18em] text-[#7fe9f0] [text-shadow:0_0_40px_rgba(60,220,230,0.45)] rtl:tracking-normal">
+          {t(teaser.title)}
+        </h2>
+        <p className="mx-auto mt-7 max-w-xl text-[17px] leading-relaxed text-[#a9c1d4]">{t(teaser.description)}</p>
+
+        {instagram ? (
+          <a
+            href={instagram.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="s-btn s-btn-md mt-9 border border-white/15 bg-white/10 text-white backdrop-blur-xl hover:bg-white/15"
+          >
+            <Instagram className="h-4 w-4" />
+            {t(teaser.cta)}
+            <span className="text-white/60">{instagram.handle}</span>
+          </a>
+        ) : null}
+
+        <GlowArch tone="night" className="mx-auto mt-6 max-w-[520px]" />
+      </Reveal>
+    </Section>
+  );
+}
 
 export default function HomePage() {
   return (
     <>
       <Hero />
-
-      <Section tone="plain">
-        <SectionHeading
-          eyebrow={{ en: "The platform", ar: "المنصة" }}
-          title={{ en: "Comprehensive dental", ar: "إدارة شاملة" }}
-          highlight={{ en: "management", ar: "لطب الأسنان" }}
-          description={{
-            en: "Everything a dental school and a dental clinic run on, in one place — and every module reads from the same patient record.",
-            ar: "كل ما تحتاجه كليات وعيادات الأسنان في مكان واحد — وكل وحدة تقرأ من نفس سجل المريض.",
-          }}
-        />
-
-        <div className="mt-14 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {features.map((feature, index) => (
-            <FeatureCard key={feature.key} feature={feature} delay={(index % 3) * 90} />
-          ))}
-        </div>
-      </Section>
-
-      <AiSection />
-      <WorkflowSection />
-      <RolesSection />
-
-      <Section tone="plain">
-        <SectionHeading
-          eyebrow={trustSection.eyebrow}
-          title={trustSection.title}
-          highlight={trustSection.highlight}
-        />
-        <div className="mt-14 grid gap-6 md:grid-cols-3">
-          {trustSection.points.map((point, index) => (
-            <FeatureCard key={point.key} feature={point} delay={index * 90} />
-          ))}
-        </div>
-      </Section>
-
-      <TestimonialsSection />
-      <CTABand />
+      <Ecosystem />
+      <Principles />
+      <Origin />
+      <Teaser />
+      <CTABand title={closing.title} highlight={closing.highlight} description={closing.description} />
     </>
   );
 }

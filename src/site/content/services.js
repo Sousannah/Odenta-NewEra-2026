@@ -1,185 +1,157 @@
 import {
   BarChart3,
   Boxes,
-  Brain,
   CalendarCheck,
+  CalendarPlus,
   ClipboardCheck,
   CreditCard,
+  FileHeart,
   FlaskConical,
   GraduationCap,
-  ScanLine,
+  Languages,
+  Layers,
   ShieldCheck,
+  Smartphone,
   Stethoscope,
+  Target,
   Users,
 } from "lucide-react";
 import { site } from "@/config/paths";
-import { images } from "@/theme/assets";
 
-/** Services page: the modules, who each one is for, and what it replaces. */
+/**
+ * Services page copy.
+ *
+ * What the platform does today, told by audience. The roadmap is not on this
+ * page on purpose — it lives in one line at the bottom, as a promise.
+ */
 
 export const hero = {
   eyebrow: { en: "Services", ar: "الخدمات" },
-  title: { en: "Everything a dental practice", ar: "كل ما تحتاجه عيادة الأسنان" },
-  highlight: { en: "actually runs on", ar: "للعمل فعليًا" },
+  title: { en: "Everything connected.", ar: "كل شيء متصل." },
+  highlight: { en: "Nothing complicated.", ar: "ولا شيء معقد." },
   description: {
-    en: "Odenta is one platform with eight modules. Take the imaging on its own, or run the whole clinic on it — every module writes to the same patient record and the same audit trail.",
-    ar: "أودنتا منصة واحدة بثماني وحدات. استخدم التصوير وحده، أو أدر العيادة بالكامل — كل وحدة تكتب في نفس سجل المريض ونفس سجل المراجعة.",
+    en: "One platform for how dentistry is taught and practised — shaped around the people who do the work, not the other way round.",
+    ar: "منصة واحدة لطريقة تعليم طب الأسنان وممارسته — مصممة حول من يقومون بالعمل، لا العكس.",
   },
 };
-
-export const modules = [
-  {
-    key: "ai-imaging",
-    icon: ScanLine,
-    title: { en: "AI imaging", ar: "التصوير بالذكاء الاصطناعي" },
-    description: {
-      en: "Panoramic, periapical and bitewing analysis. Findings are boxed on the film, scored for confidence and written to the tooth they belong to.",
-      ar: "تحليل الأشعة البانورامية والذروية واللدغية. النتائج محددة على الصورة ومُقيّمة بالثقة ومرتبطة بالسن.",
-    },
-    cta: { en: "Run the demo", ar: "شغّل العرض" },
-    to: site.tryAi,
-  },
-  {
-    key: "charting",
-    icon: Stethoscope,
-    title: { en: "Charting & perio", ar: "الرسم البياني واللثة" },
-    description: {
-      en: "Surface-level odontogram in FDI, Universal and Palmer, six-point periodontal depths, recession, bleeding and mobility — all as structured data.",
-      ar: "مخطط أسنان بمستوى الأسطح، وأعماق لثوية بست نقاط، والانحسار والنزيف والحركة — كلها بيانات مهيكلة.",
-    },
-  },
-  {
-    key: "student-workflow",
-    icon: GraduationCap,
-    title: { en: "Student workflow", ar: "سير عمل الطالب" },
-    description: {
-      en: "Case allocation, requirement counters and department sheets for every clinical rotation, with the student's own queue front and centre.",
-      ar: "توزيع الحالات وعدادات المتطلبات وأوراق الأقسام لكل تدريب سريري، مع قائمة الطالب في المقدمة.",
-    },
-    cta: { en: "For universities", ar: "للجامعات" },
-    to: site.universities,
-  },
-  {
-    key: "supervision",
-    icon: ClipboardCheck,
-    title: { en: "Supervision & sign-off", ar: "الإشراف والاعتماد" },
-    description: {
-      en: "Step-level review with annotations, grades and signatures. Nothing advances without an attributable approval, and every approval is exportable.",
-      ar: "مراجعة على مستوى الخطوة مع الملاحظات والدرجات والتوقيعات. لا شيء يتقدم دون موافقة موثقة قابلة للتصدير.",
-    },
-  },
-  {
-    key: "scheduling",
-    icon: CalendarCheck,
-    title: { en: "Scheduling & recalls", ar: "الجدولة والمتابعات" },
-    description: {
-      en: "Chair-by-chair calendar, waitlist, check-in, no-show tracking and recall campaigns driven by the treatment plan rather than a spreadsheet.",
-      ar: "تقويم لكل كرسي وقائمة انتظار وتسجيل وصول وتتبع الغياب وحملات متابعة مبنية على خطة العلاج.",
-    },
-  },
-  {
-    key: "billing",
-    icon: CreditCard,
-    title: { en: "Billing & payments", ar: "الفوترة والمدفوعات" },
-    description: {
-      en: "CDT-coded estimates, insurance split, part payments, receipts and account pockets — with the front desk never needing the clinical note.",
-      ar: "تقديرات مرمّزة وتقسيم التأمين ودفعات جزئية وإيصالات وحسابات — دون حاجة الاستقبال للملاحظة السريرية.",
-    },
-  },
-  {
-    key: "lab",
-    icon: FlaskConical,
-    title: { en: "Lab cases", ar: "حالات المعمل" },
-    description: {
-      en: "Work orders with shade, impression type and due date. The lab technician moves a case through stages the dentist can watch without a phone call.",
-      ar: "أوامر عمل باللون ونوع الطبعة وتاريخ التسليم. يحرك الفني الحالة عبر مراحل يتابعها الطبيب دون اتصال.",
-    },
-  },
-  {
-    key: "inventory",
-    icon: Boxes,
-    title: { en: "Stock & sterilisation", ar: "المخزون والتعقيم" },
-    description: {
-      en: "Consumable levels, reorder points, peripheral servicing and sterilisation cycles with traceable instrument pouches.",
-      ar: "مستويات المستهلكات ونقاط إعادة الطلب وصيانة الأجهزة ودورات التعقيم مع تتبع أكياس الأدوات.",
-    },
-  },
-  {
-    key: "analytics",
-    icon: BarChart3,
-    title: { en: "Reporting", ar: "التقارير" },
-    description: {
-      en: "Revenue, chair utilisation, treatment mix, student competency and supervisor turnaround — filtered by clinic, department or person.",
-      ar: "الإيرادات واستغلال الكراسي ومزيج العلاجات وكفاءة الطلاب واستجابة المشرفين — بحسب العيادة أو القسم أو الشخص.",
-    },
-  },
-];
 
 export const audiences = [
   {
     key: "universities",
     icon: GraduationCap,
     eyebrow: { en: "For universities", ar: "للجامعات" },
-    title: { en: "Run the clinical rotation, not the paperwork", ar: "أدر التدريب السريري لا الأوراق" },
+    title: { en: "Clinical teaching, without the paper.", ar: "تعليم سريري، بلا ورق." },
     description: {
-      en: "Allocate cases to students by requirement, supervise them step by step, and produce the competency evidence your accreditation body asks for — without a single paper logbook.",
-      ar: "وزّع الحالات على الطلاب حسب المتطلبات، وأشرف خطوة بخطوة، وأنتج أدلة الكفاءة المطلوبة للاعتماد — دون سجل ورقي واحد.",
+      en: "From the first patient a student meets to the final competency sign-off — the whole teaching clinic in one place.",
+      ar: "من أول مريض يقابله الطالب حتى الاعتماد النهائي للكفاءة — عيادة التعليم بالكامل في مكان واحد.",
     },
-    image: images.dashboard,
     to: site.universities,
-    cta: { en: "University programme", ar: "برنامج الجامعات" },
-    points: [
-      { en: "Requirement counters per department and per student", ar: "عدادات المتطلبات لكل قسم وطالب" },
-      { en: "Supervisor sign-off with signature and grade", ar: "اعتماد المشرف بالتوقيع والدرجة" },
-      { en: "Accreditation exports in one click", ar: "تصدير ملفات الاعتماد بنقرة واحدة" },
+    cta: { en: "See universities", ar: "شاهد الجامعات" },
+    items: [
+      {
+        icon: Users,
+        title: { en: "Case allocation", ar: "توزيع الحالات" },
+        description: { en: "The right patient to the right student, fairly and on time.", ar: "المريض المناسب للطالب المناسب، بعدل وفي الوقت." },
+      },
+      {
+        icon: ClipboardCheck,
+        title: { en: "Supervisor sign-off", ar: "اعتماد المشرف" },
+        description: { en: "Every clinical step reviewed and signed, digitally.", ar: "كل خطوة سريرية تُراجع وتُعتمد رقميًا." },
+      },
+      {
+        icon: Target,
+        title: { en: "Requirements & milestones", ar: "المتطلبات والإنجازات" },
+        description: { en: "Each student's progress, visible at a glance.", ar: "تقدم كل طالب، واضح من نظرة واحدة." },
+      },
+      {
+        icon: CalendarPlus,
+        title: { en: "Patient booking", ar: "حجز المرضى" },
+        description: { en: "The public books straight into the teaching clinic.", ar: "يحجز الجمهور مباشرة في عيادة التعليم." },
+      },
+      {
+        icon: BarChart3,
+        title: { en: "Faculty overview", ar: "نظرة شاملة للكلية" },
+        description: { en: "Departments, clinics and cohorts in one clear view.", ar: "الأقسام والعيادات والدفعات في عرض واحد واضح." },
+      },
     ],
   },
   {
     key: "clinics",
-    icon: Users,
+    icon: Stethoscope,
     eyebrow: { en: "For clinics", ar: "للعيادات" },
-    title: { en: "One record, every role, no double entry", ar: "سجل واحد، كل الأدوار، دون ازدواج" },
+    title: { en: "Your whole day, beautifully organised.", ar: "يومك بالكامل، منظم بأناقة." },
     description: {
-      en: "The dentist charts, the assistant turns the room, the front desk takes payment and the lab moves the case — each from a dashboard built for that job, all on the same record.",
-      ar: "الطبيب يرسم، والمساعد يجهّز الغرفة، والاستقبال يحصّل، والمعمل يحرك الحالة — كل من لوحة مصممة لعمله وعلى نفس السجل.",
+      en: "The front desk, the chair and the back office finally working from the same page.",
+      ar: "الاستقبال والكرسي والإدارة يعملون أخيرًا من الصفحة نفسها.",
     },
-    image: images.dashboardAlt,
     to: site.clinics,
-    cta: { en: "Clinic programme", ar: "برنامج العيادات" },
-    points: [
-      { en: "Four role dashboards out of the box", ar: "أربع لوحات أدوار جاهزة" },
-      { en: "Clinical and financial data kept separate", ar: "فصل البيانات السريرية عن المالية" },
-      { en: "Multi-branch reporting for owners", ar: "تقارير متعددة الفروع للملاك" },
+    cta: { en: "See clinics", ar: "شاهد العيادات" },
+    items: [
+      {
+        icon: CalendarCheck,
+        title: { en: "Scheduling", ar: "الجدولة" },
+        description: { en: "Every chair, every dentist, every day — at a glance.", ar: "كل كرسي وكل طبيب وكل يوم — من نظرة." },
+      },
+      {
+        icon: FileHeart,
+        title: { en: "Patient records", ar: "سجلات المرضى" },
+        description: { en: "Charting, history and treatment plans in one record.", ar: "المخطط والتاريخ وخطط العلاج في سجل واحد." },
+      },
+      {
+        icon: CreditCard,
+        title: { en: "Billing & payments", ar: "الفواتير والمدفوعات" },
+        description: { en: "Estimates, instalments and receipts that add up.", ar: "تقديرات وأقساط وإيصالات دقيقة." },
+      },
+      {
+        icon: FlaskConical,
+        title: { en: "Lab & inventory", ar: "المعمل والمخزون" },
+        description: { en: "Lab cases tracked, stock never a surprise.", ar: "حالات المعمل متتبعة، والمخزون بلا مفاجآت." },
+      },
+      {
+        icon: Boxes,
+        title: { en: "Your whole team", ar: "فريقك بالكامل" },
+        description: { en: "Owner, dentist, assistant and reception — each with their own view.", ar: "المالك والطبيب والمساعد والاستقبال — لكل منهم واجهته." },
+      },
     ],
   },
 ];
 
-export const assurance = [
-  {
-    key: "standards",
-    icon: ShieldCheck,
-    title: { en: "Clinical standards built in", ar: "معايير سريرية مدمجة" },
-    description: {
-      en: "FDI tooth identity, ICDAS caries scoring and CDT procedure codes — so your data leaves Odenta as cleanly as it arrived.",
-      ar: "ترقيم FDI وتصنيف ICDAS ورموز CDT — لتخرج بياناتك من أودنتا بنفس نظافة دخولها.",
+export const foundation = {
+  eyebrow: { en: "Underneath it all", ar: "في الأساس" },
+  title: { en: "One foundation,", ar: "أساس واحد،" },
+  highlight: { en: "built to last.", ar: "مبني ليدوم." },
+  items: [
+    {
+      key: "record",
+      icon: Layers,
+      title: { en: "One patient record", ar: "سجل واحد للمريض" },
+      description: { en: "Every visit and every note, in one continuous story.", ar: "كل زيارة وكل ملاحظة، في قصة واحدة متصلة." },
     },
-  },
-  {
-    key: "model",
-    icon: Brain,
-    title: { en: "A model that shows its work", ar: "نموذج يوضح عمله" },
-    description: {
-      en: "Every finding carries a confidence score and a bounding box. The clinician confirms or rejects it, and that decision is what gets stored.",
-      ar: "كل نتيجة تحمل درجة ثقة ومربع تحديد. يؤكدها الطبيب أو يرفضها، والقرار هو ما يُخزَّن.",
+    {
+      key: "secure",
+      icon: ShieldCheck,
+      title: { en: "Private by design", ar: "خصوصية من الأساس" },
+      description: { en: "Role-based access, every read on the record logged.", ar: "صلاحيات حسب الدور، وكل اطلاع على السجل موثق." },
     },
-  },
-  {
-    key: "migration",
-    icon: Boxes,
-    title: { en: "Bring your existing records", ar: "انقل سجلاتك الحالية" },
-    description: {
-      en: "Patients, appointment history and radiographs import from CSV or an existing system, with a dry run before anything is written.",
-      ar: "استيراد المرضى وتاريخ المواعيد والأشعة من CSV أو نظام قائم، مع تجربة أولية قبل الكتابة.",
+    {
+      key: "language",
+      icon: Languages,
+      title: { en: "Arabic & English", ar: "العربية والإنجليزية" },
+      description: { en: "Fully bilingual, right-to-left native.", ar: "ثنائي اللغة بالكامل، ويدعم الكتابة من اليمين." },
     },
+    {
+      key: "mobile",
+      icon: Smartphone,
+      title: { en: "Web & mobile", ar: "الويب والهاتف" },
+      description: { en: "At the chair, at the desk, or on the move.", ar: "عند الكرسي، أو على المكتب، أو أثناء التنقل." },
+    },
+  ],
+};
+
+export const next = {
+  title: { en: "And this is only the beginning.", ar: "وهذه مجرد البداية." },
+  description: {
+    en: "We're building what comes next for dentistry. The future is closer than you think.",
+    ar: "نحن نبني ما هو قادم لطب الأسنان. المستقبل أقرب مما تظن.",
   },
-];
+};

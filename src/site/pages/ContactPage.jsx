@@ -1,335 +1,284 @@
 import { useState } from "react";
-import {
-  ArrowRight,
-  Building2,
-  CheckCircle2,
-  Clock3,
-  Mail,
-  MapPin,
-  MessageSquare,
-  Phone,
-} from "lucide-react";
+import { useSearchParams } from "react-router-dom";
+import { ArrowRight, Clock3, Instagram, Linkedin, Mail, MapPin, MessageCircle, Phone } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { site } from "@/config/paths";
 import { siteService } from "@/services";
-import { contactDetails } from "@/site/content/navigation";
+import { contactDetails, socialLinks } from "@/site/content/navigation";
 import { useLanguage, useT } from "@/site/i18n/LanguageContext";
-import { CTABand, PageHero, Reveal, Section, SiteButton } from "@/site/components";
+import { PageHero, Reveal, Section, SiteButton } from "@/site/components";
+import { Field, FormSuccess, fieldErrors } from "@/site/components/Form";
 
 const TOPICS = [
-  { value: "university", label: { en: "University programme", ar: "برنامج جامعي" } },
-  { value: "clinic", label: { en: "Clinic onboarding", ar: "تفعيل عيادة" } },
-  { value: "demo", label: { en: "Product demo", ar: "عرض المنتج" } },
+  { value: "university", label: { en: "A university", ar: "جامعة" } },
+  { value: "clinic", label: { en: "A clinic", ar: "عيادة" } },
+  { value: "patient", label: { en: "I'm a patient", ar: "أنا مريض" } },
+  { value: "partnership", label: { en: "Partnership", ar: "شراكة" } },
   { value: "support", label: { en: "Support", ar: "الدعم" } },
   { value: "other", label: { en: "Something else", ar: "شيء آخر" } },
 ];
 
-const EMPTY = { name: "", email: "", organisation: "", topic: "university", message: "" };
+const SOCIAL_ICON = { instagram: Instagram, linkedin: Linkedin };
 
-/** Shared field wrapper so every input on the site looks the same. */
-function FormField({ label, htmlFor, error, required, children }) {
-  const t = useT();
-  return (
-    <label htmlFor={htmlFor} className="flex flex-col gap-2">
-      <span className="text-[13px] font-bold text-ink">
-        {t(label)}
-        {required ? <span className="ms-1 text-danger">*</span> : null}
-      </span>
-      {children}
-      {error ? <span className="text-[12.5px] font-semibold text-danger">{t(error)}</span> : null}
-    </label>
-  );
-}
-
-const inputClass =
-  "h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-ink placeholder:text-ink-faint transition focus:border-accent-400 focus:outline-none focus:ring-4 focus:ring-accent-500/15";
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function ContactForm() {
   const t = useT();
   const { isRtl } = useLanguage();
-  const [form, setForm] = useState(EMPTY);
+  const [params] = useSearchParams();
+
+  /* arriving from a directory card pre-fills who the message is about */
+  const initial = () => ({
+    name: "",
+    email: "",
+    phone: "",
+    organisation: params.get("organisation") ?? "",
+    topic: TOPICS.some((item) => item.value === params.get("topic")) ? params.get("topic") : "university",
+    message: "",
+  });
+
+  const [form, setForm] = useState(initial);
   const [state, setState] = useState("idle"); // idle | busy | done
   const [errors, setErrors] = useState({});
   const [failure, setFailure] = useState(null);
 
-  const update = (field) => (event) =>
-    setForm((prev) => ({ ...prev, [field]: event.target.value }));
+  const update = (field) => (event) => setForm((prev) => ({ ...prev, [field]: event.target.value }));
 
   const submit = async (event) => {
     event.preventDefault();
-    setState("busy");
-    setErrors({});
+    const local = {};
+    if (!form.name.trim()) local.name = true;
+    if (!EMAIL.test(form.email.trim())) local.email = true;
+    if (!form.message.trim()) local.message = true;
+    setErrors(local);
     setFailure(null);
+    if (Object.keys(local).length) return;
 
+    setState("busy");
+    const topic = TOPICS.find((item) => item.value === form.topic);
     try {
-      await siteService.submitContactRequest(form);
+      await siteService.submitContactRequest({
+        name: form.name.trim(),
+        email: form.email.trim(),
+        phone: form.phone.trim() || undefined,
+        organisation: form.organisation.trim() || undefined,
+        subject: topic?.label.en,
+        message: form.message.trim(),
+      });
       setState("done");
-      setForm(EMPTY);
     } catch (cause) {
-      /* the API returns field-level details on a 422 */
-      if (cause?.details) setErrors(cause.details);
-      else setFailure(cause?.message ?? "Something went wrong. Please try again.");
+      const fields = fieldErrors(cause);
+      if (fields) setErrors(fields);
+      else setFailure(t({ en: "Something went wrong. Please try again.", ar: "حدث خطأ ما. يرجى المحاولة مرة أخرى." }));
       setState("idle");
     }
   };
 
   if (state === "done") {
     return (
-      <div className="flex flex-col items-center gap-5 rounded-3xl border border-accent-200 bg-accent-50/60 px-8 py-16 text-center">
-        <span className="flex h-16 w-16 items-center justify-center rounded-full bg-od-gradient text-white shadow-brand">
-          <CheckCircle2 className="h-8 w-8" />
-        </span>
-        <h3 className="text-[22px] font-extrabold text-brand-700">
-          {t({ en: "Message received", ar: "تم استلام رسالتك" })}
-        </h3>
-        <p className="max-w-sm text-[15px] leading-relaxed text-ink-muted">
-          {t({
-            en: "We reply within one working day. If it is urgent, call the number on the right and ask for the clinical team.",
-            ar: "نرد خلال يوم عمل واحد. إذا كان الأمر عاجلًا، اتصل بالرقم المجاور واطلب الفريق السريري.",
-          })}
-        </p>
-        <SiteButton variant="ghost" size="sm" onClick={() => setState("idle")}>
-          {t({ en: "Send another message", ar: "أرسل رسالة أخرى" })}
-        </SiteButton>
-      </div>
+      <FormSuccess
+        title={{ en: "Message received.", ar: "تم استلام رسالتك." }}
+        body={{
+          en: "Thank you for reaching out. A real person from the Odenta team will reply within one working day.",
+          ar: "شكرًا لتواصلك. سيرد عليك شخص حقيقي من فريق أودنتا خلال يوم عمل واحد.",
+        }}
+        again={{ en: "Send another message", ar: "أرسل رسالة أخرى" }}
+        onAgain={() => {
+          setForm(initial());
+          setState("idle");
+        }}
+      />
     );
   }
 
   return (
-    <form
-      onSubmit={submit}
-      className="rounded-3xl border border-slate-200/80 bg-white p-8 shadow-card"
-      noValidate
-    >
-      <h3 className="text-[20px] font-extrabold text-brand-700">
-        {t({ en: "Send us a message", ar: "أرسل لنا رسالة" })}
-      </h3>
-      <p className="mt-2 text-[14.5px] text-ink-muted">
+    <form onSubmit={submit} noValidate>
+      <h2 className="text-[24px]">{t({ en: "Send us a message", ar: "أرسل لنا رسالة" })}</h2>
+      <p className="s-muted mt-2 text-[15px]">
         {t({
-          en: "Tell us who you are and what you run — we will come back with the right person, not a sales sequence.",
-          ar: "أخبرنا من أنت وما تديره — سنرد عليك بالشخص المناسب، لا برسائل تسويقية.",
+          en: "Tell us a little about you — we'll come back with the right person.",
+          ar: "أخبرنا قليلًا عنك — وسنعود إليك بالشخص المناسب.",
         })}
       </p>
 
-      <div className="mt-7 grid gap-5 sm:grid-cols-2">
-        <FormField
+      <div className="mt-8 grid gap-5 sm:grid-cols-2">
+        <Field
           label={{ en: "Full name", ar: "الاسم الكامل" }}
           htmlFor="contact-name"
           required
           error={errors.name ? { en: "Please enter your name", ar: "يرجى إدخال اسمك" } : null}
         >
-          <input
-            id="contact-name"
-            className={inputClass}
-            value={form.name}
-            onChange={update("name")}
-            placeholder={t({ en: "Dr. Nour Hassan", ar: "د. نور حسن" })}
-            autoComplete="name"
-          />
-        </FormField>
+          <input id="contact-name" className="s-input" value={form.name} onChange={update("name")} autoComplete="name" />
+        </Field>
 
-        <FormField
-          label={{ en: "Work email", ar: "البريد الإلكتروني" }}
+        <Field
+          label={{ en: "Email", ar: "البريد الإلكتروني" }}
           htmlFor="contact-email"
           required
-          error={errors.email ? { en: "Please enter a work email", ar: "يرجى إدخال بريد صالح" } : null}
+          error={errors.email ? { en: "Please enter a valid email", ar: "يرجى إدخال بريد صالح" } : null}
         >
           <input
             id="contact-email"
             type="email"
-            className={inputClass}
+            dir="ltr"
+            className="s-input"
             value={form.email}
             onChange={update("email")}
-            placeholder="you@clinic.com"
             autoComplete="email"
           />
-        </FormField>
+        </Field>
 
-        <FormField label={{ en: "Organisation", ar: "الجهة" }} htmlFor="contact-org">
+        <Field label={{ en: "Phone", ar: "الهاتف" }} htmlFor="contact-phone">
           <input
-            id="contact-org"
-            className={inputClass}
-            value={form.organisation}
-            onChange={update("organisation")}
-            placeholder={t({ en: "University or clinic", ar: "جامعة أو عيادة" })}
-            autoComplete="organization"
+            id="contact-phone"
+            type="tel"
+            dir="ltr"
+            className="s-input"
+            value={form.phone}
+            onChange={update("phone")}
+            autoComplete="tel"
           />
-        </FormField>
+        </Field>
 
-        <FormField label={{ en: "What is this about?", ar: "بخصوص ماذا؟" }} htmlFor="contact-topic">
-          <select
-            id="contact-topic"
-            className={cn(inputClass, "appearance-none")}
-            value={form.topic}
-            onChange={update("topic")}
-          >
+        <Field label={{ en: "I'm contacting you about", ar: "أتواصل معكم بخصوص" }} htmlFor="contact-topic">
+          <select id="contact-topic" className="s-input" value={form.topic} onChange={update("topic")}>
             {TOPICS.map((topic) => (
               <option key={topic.value} value={topic.value}>
                 {t(topic.label)}
               </option>
             ))}
           </select>
-        </FormField>
+        </Field>
 
-        <div className="sm:col-span-2">
-          <FormField
-            label={{ en: "Message", ar: "الرسالة" }}
-            htmlFor="contact-message"
-            required
-            error={errors.message ? { en: "Please add a message", ar: "يرجى كتابة رسالة" } : null}
-          >
-            <textarea
-              id="contact-message"
-              rows={5}
-              className={cn(inputClass, "h-auto resize-y py-3.5 leading-relaxed")}
-              value={form.message}
-              onChange={update("message")}
-              placeholder={t({
-                en: "How many chairs and students do you run? What are you using today?",
-                ar: "كم عدد الكراسي والطلاب لديك؟ وما النظام المستخدم حاليًا؟",
-              })}
-            />
-          </FormField>
-        </div>
+        <Field label={{ en: "University or clinic", ar: "الجامعة أو العيادة" }} htmlFor="contact-org" className="sm:col-span-2">
+          <input
+            id="contact-org"
+            className="s-input"
+            value={form.organisation}
+            onChange={update("organisation")}
+            autoComplete="organization"
+          />
+        </Field>
+
+        <Field
+          label={{ en: "Message", ar: "الرسالة" }}
+          htmlFor="contact-message"
+          required
+          className="sm:col-span-2"
+          error={errors.message ? { en: "Please add a message", ar: "يرجى كتابة رسالة" } : null}
+        >
+          <textarea
+            id="contact-message"
+            rows={5}
+            className="s-input"
+            value={form.message}
+            onChange={update("message")}
+            placeholder={t({ en: "How can we help?", ar: "كيف يمكننا مساعدتك؟" })}
+          />
+        </Field>
       </div>
 
       {failure ? (
-        <p className="mt-5 rounded-2xl bg-danger-soft px-4 py-3 text-[13.5px] font-semibold text-danger">
-          {failure}
-        </p>
+        <p className="mt-5 rounded-2xl bg-rose-500/10 px-4 py-3 text-[14px] font-medium text-rose-500">{failure}</p>
       ) : null}
 
       <SiteButton
-        className="mt-7 w-full sm:w-auto"
+        className="mt-8 w-full sm:w-auto"
+        size="lg"
         type="submit"
         disabled={state === "busy"}
         rightIcon={<ArrowRight className={cn("h-4 w-4", isRtl && "rotate-180")} />}
       >
-        {state === "busy"
-          ? t({ en: "Sending…", ar: "جارٍ الإرسال…" })
-          : t({ en: "Send message", ar: "أرسل الرسالة" })}
+        {state === "busy" ? t({ en: "Sending…", ar: "جارٍ الإرسال…" }) : t({ en: "Send message", ar: "أرسل الرسالة" })}
       </SiteButton>
     </form>
+  );
+}
+
+function Channel({ icon: Icon, label, value, href, external }) {
+  const t = useT();
+  return (
+    <a
+      href={href}
+      {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+      className="s-focus group flex items-center gap-4 rounded-2xl p-2 transition hover:bg-[var(--s-glass-strong)]"
+    >
+      <span className="s-chip !h-11 !w-11 shrink-0 !justify-center !p-0">
+        <Icon className="s-accent h-[18px] w-[18px]" />
+      </span>
+      <span className="min-w-0">
+        <span className="s-soft block text-[12.5px]">{t(label)}</span>
+        <span className="block truncate text-[15px] font-medium" dir="ltr">
+          {value}
+        </span>
+      </span>
+    </a>
   );
 }
 
 export default function ContactPage() {
   const t = useT();
 
-  const channels = [
-    {
-      key: "email",
-      icon: Mail,
-      label: { en: "Email us", ar: "راسلنا" },
-      value: contactDetails.email,
-      href: `mailto:${contactDetails.email}`,
-    },
-    {
-      key: "phone",
-      icon: Phone,
-      label: { en: "Call us", ar: "اتصل بنا" },
-      value: contactDetails.phone,
-      href: `tel:${contactDetails.phone.replace(/\s/g, "")}`,
-    },
-    {
-      key: "support",
-      icon: MessageSquare,
-      label: { en: "Existing customer", ar: "عميل حالي" },
-      value: contactDetails.supportEmail,
-      href: `mailto:${contactDetails.supportEmail}`,
-    },
-  ];
-
   return (
     <>
       <PageHero
         eyebrow={{ en: "Contact", ar: "تواصل" }}
-        eyebrowIcon={<MessageSquare className="h-3.5 w-3.5" />}
-        title={{ en: "Let's talk about", ar: "لنتحدث عن" }}
-        highlight={{ en: "your practice", ar: "ممارستك" }}
+        eyebrowIcon={<MessageCircle className="h-3.5 w-3.5" />}
+        title={{ en: "Let's talk.", ar: "لنتحدث." }}
+        highlight={{ en: "We're listening.", ar: "نحن نستمع." }}
         description={{
-          en: "Whether you run a teaching hospital or a five-chair clinic, the first conversation is with someone who has worked a chair — not a sales script.",
-          ar: "سواء كنت تدير مستشفى تعليميًا أو عيادة بخمسة كراسي، أول حديث سيكون مع شخص عمل على الكرسي — لا نص مبيعات.",
+          en: "A dean, a dentist, a student or a patient — the first conversation is always with a person, never a script.",
+          ar: "عميد أو طبيب أو طالب أو مريض — أول حديث يكون دائمًا مع إنسان، لا مع نص جاهز.",
         }}
       />
 
-      <Section tone="canvas" className="pt-0">
-        <div className="grid gap-10 lg:grid-cols-12">
-          <div className="lg:col-span-7">
-            <Reveal>
-              <ContactForm />
-            </Reveal>
-          </div>
+      <Section className="pt-4 lg:pt-6">
+        <div className="grid gap-6 lg:grid-cols-12">
+          <Reveal className="s-glass rounded-[32px] p-7 sm:p-10 lg:col-span-8">
+            <ContactForm />
+          </Reveal>
 
-          <div className="flex flex-col gap-6 lg:col-span-5">
-            <Reveal delay={120} className="rounded-3xl border border-slate-200/80 bg-white p-8 shadow-card">
-              <h3 className="text-[18px] font-extrabold text-brand-700">
-                {t({ en: "Get in touch", ar: "ابقَ على تواصل" })}
-              </h3>
-
-              <ul className="mt-6 flex flex-col gap-5">
-                {channels.map((channel) => {
-                  const Icon = channel.icon;
-                  return (
-                    <li key={channel.key} className="flex items-start gap-4">
-                      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
-                        <Icon className="h-[18px] w-[18px]" />
-                      </span>
-                      <span className="min-w-0">
-                        <span className="block text-[12.5px] font-bold uppercase tracking-wide text-ink-soft">
-                          {t(channel.label)}
-                        </span>
-                        <a
-                          href={channel.href}
-                          className="mt-0.5 block truncate text-[15px] font-bold text-ink transition hover:text-accent-600"
-                        >
-                          {channel.value}
-                        </a>
-                      </span>
-                    </li>
-                  );
-                })}
-              </ul>
+          <div className="flex flex-col gap-6 lg:col-span-4">
+            <Reveal delay={120} className="s-glass rounded-[32px] p-6">
+              <h3 className="px-2 pt-2 text-[18px]">{t({ en: "Reach us directly", ar: "تواصل معنا مباشرة" })}</h3>
+              <div className="mt-4 flex flex-col gap-1">
+                <Channel icon={Mail} label={{ en: "Email", ar: "البريد" }} value={contactDetails.email} href={`mailto:${contactDetails.email}`} />
+                <Channel
+                  icon={Phone}
+                  label={{ en: "Phone", ar: "الهاتف" }}
+                  value={contactDetails.phone}
+                  href={`tel:${contactDetails.phone.replace(/\s/g, "")}`}
+                />
+                {socialLinks.map((item) => (
+                  <Channel
+                    key={item.key}
+                    icon={SOCIAL_ICON[item.key]}
+                    label={{ en: item.label, ar: item.label }}
+                    value={item.handle}
+                    href={item.href}
+                    external
+                  />
+                ))}
+              </div>
             </Reveal>
 
-            <Reveal
-              delay={200}
-              className="rounded-3xl border border-slate-200/80 bg-od-gradient-soft p-8 shadow-card"
-            >
-              <h3 className="text-[18px] font-extrabold text-brand-700">
-                {t({ en: "Where we are", ar: "أين نحن" })}
-              </h3>
-
-              <p className="mt-5 flex items-start gap-3 text-[15px] leading-relaxed text-ink-muted">
-                <MapPin className="mt-0.5 h-[18px] w-[18px] shrink-0 text-accent-600" />
+            <Reveal delay={200} className="s-glass rounded-[32px] p-8">
+              <h3 className="text-[18px]">{t({ en: "Where we are", ar: "أين نحن" })}</h3>
+              <p className="s-muted mt-5 flex items-start gap-3 text-[15px] leading-relaxed">
+                <MapPin className="s-accent mt-0.5 h-[18px] w-[18px] shrink-0" />
                 {t(contactDetails.address)}
               </p>
-              <p className="mt-4 flex items-start gap-3 text-[15px] text-ink-muted">
-                <Clock3 className="mt-0.5 h-[18px] w-[18px] shrink-0 text-accent-600" />
+              <p className="s-muted mt-4 flex items-start gap-3 text-[15px]">
+                <Clock3 className="s-accent mt-0.5 h-[18px] w-[18px] shrink-0" />
                 {t(contactDetails.hours)}
               </p>
-              <p className="mt-4 flex items-start gap-3 text-[15px] text-ink-muted">
-                <Building2 className="mt-0.5 h-[18px] w-[18px] shrink-0 text-accent-600" />
-                {t({
-                  en: "Campus visits welcome — tell us a day and we will host you in the student clinic.",
-                  ar: "زيارات الحرم الجامعي مرحب بها — أخبرنا باليوم وسنستضيفك في عيادة الطلاب.",
-                })}
-              </p>
+              <SiteButton variant="glass" size="sm" to={site.demo} className="mt-7">
+                {t({ en: "Prefer a live demo?", ar: "تفضل عرضًا مباشرًا؟" })}
+              </SiteButton>
             </Reveal>
           </div>
         </div>
       </Section>
-
-      <CTABand
-        title={{ en: "Prefer to see it", ar: "تفضل أن تراه" }}
-        highlight={{ en: "working first?", ar: "يعمل أولًا؟" }}
-        description={{
-          en: "Run a radiograph through the public demo before you book anything — no account, no upload of a real patient film needed.",
-          ar: "جرّب الأشعة عبر العرض العام قبل أي حجز — دون حساب ودون رفع صورة مريض حقيقي.",
-        }}
-        primary={{ label: { en: "Try our AI", ar: "جرّب الذكاء الاصطناعي" }, to: site.tryAi }}
-        secondary={{ label: { en: "See services", ar: "شاهد الخدمات" }, to: site.services }}
-      />
     </>
   );
 }

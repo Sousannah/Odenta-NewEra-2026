@@ -1,16 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import {
-  AlertCircle,
-  ArrowLeft,
-  ArrowRight,
-  Eye,
-  EyeOff,
-  Lock,
-  Mail,
-  ShieldCheck,
-  Sparkles,
-} from "lucide-react";
+import { AlertCircle, ArrowLeft, ArrowRight, Eye, EyeOff, Loader2, Lock, Mail } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { safeInternalPath } from "@/lib/safeRedirect";
 import { site } from "@/config/paths";
@@ -18,11 +8,11 @@ import { roleHome } from "@/auth/roles";
 import { useAuth } from "@/auth/AuthContext";
 import { authService } from "@/services";
 import { GoogleMark, MicrosoftMark } from "@/components/shared/ProviderMarks";
-import { Button, IconButton } from "@/components/ui/Button";
-import { Field, Input } from "@/components/ui/Field";
-import { OdentaLoaderOverlay } from "@/components/ui/OdentaLoader";
-import { Logo, ToothMark } from "@/components/shared/Logo";
-import { images } from "@/theme/assets";
+import { SiteSurface } from "@/site/layout/SiteSurface";
+import { LanguageToggle, ThemeToggle } from "@/site/layout/SiteHeader";
+import { SiteLogo } from "@/site/components/SiteLogo";
+import { useLanguage, useT } from "@/site/i18n/LanguageContext";
+import { slogan } from "@/site/content/navigation";
 
 /**
  * Sign-in.
@@ -51,7 +41,32 @@ const mmss = (ms) => {
   return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
 };
 
+/**
+ * One input row: icon, control, optional trailing slot. The site's glass
+ * input, not the portal's `Field`, so sign-in looks like the website it is
+ * reached from.
+ */
+function GlassInput({ icon: Icon, trailing, className, ...props }) {
+  return (
+    <div className="relative">
+      <Icon className="s-muted pointer-events-none absolute start-4 top-1/2 h-4 w-4 -translate-y-1/2" />
+      <input className={cn("s-input ps-11 disabled:opacity-60", trailing && "pe-12", className)} {...props} />
+      {trailing ? <div className="absolute end-2 top-1/2 -translate-y-1/2">{trailing}</div> : null}
+    </div>
+  );
+}
+
 export default function SignInPage() {
+  return (
+    <SiteSurface>
+      <SignIn />
+    </SiteSurface>
+  );
+}
+
+function SignIn() {
+  const t = useT();
+  const { isRtl } = useLanguage();
   const { signIn, signInWithProvider } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -151,8 +166,10 @@ export default function SignInPage() {
 
     const email = form.email.trim().toLowerCase();
 
-    if (!email || !form.password) return setError("Enter your email and password.");
-    if (!EMAIL_PATTERN.test(email)) return setError("That does not look like an email address.");
+    if (!email || !form.password)
+      return setError(t({ en: "Enter your email and password.", ar: "أدخل بريدك الإلكتروني وكلمة المرور." }));
+    if (!EMAIL_PATTERN.test(email))
+      return setError(t({ en: "That does not look like an email address.", ar: "هذا لا يبدو بريدًا إلكترونيًا صحيحًا." }));
 
     setBusy(true);
     setError(null);
@@ -168,250 +185,207 @@ export default function SignInPage() {
     }
   };
 
-  return (
-    <div className="flex min-h-screen bg-white">
-      {/* ------------------------------------------------------------ form */}
-      <div className="od-radial relative flex w-full flex-col justify-center bg-white px-6 py-12 lg:w-[560px] lg:px-14">
-        {/* The form stays legible underneath rather than being swapped out, so
-            a slow sign-in does not read as the page having gone somewhere. */}
-        {busy ? <OdentaLoaderOverlay size="sm" label="Signing you in" /> : null}
+  const arrow = <ArrowRight className={cn("h-4 w-4", isRtl && "rotate-180")} />;
 
-        <div className="flex items-center justify-between gap-4">
-          <Link to={site.home} className="od-focus rounded-lg">
-            <Logo />
-          </Link>
+  return (
+    <div className="relative z-10 flex min-h-screen flex-col px-4 py-5 sm:px-6">
+      {/* top bar — the way back, and the two preferences the site offers */}
+      <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3">
+        <SiteLogo />
+        <div className="flex items-center gap-1">
           <Link
             to={site.home}
-            className="inline-flex items-center gap-1.5 text-[13px] font-bold text-ink-muted transition hover:text-accent-600"
+            className="s-focus s-muted me-1 hidden items-center gap-1.5 rounded-full px-3 py-2 text-[14px] font-medium transition hover:text-[var(--s-text)] sm:inline-flex"
           >
-            <ArrowLeft className="h-3.5 w-3.5" />
-            Back to site
+            <ArrowLeft className={cn("h-4 w-4", isRtl && "rotate-180")} />
+            {t({ en: "Back to site", ar: "العودة للموقع" })}
           </Link>
+          <LanguageToggle />
+          <ThemeToggle />
         </div>
+      </div>
 
-        <div className="mt-10">
-          <h1 className="text-[30px] font-extrabold leading-tight text-ink">
-            Welcome back to <span className="od-gradient-text">Odenta</span>
-          </h1>
-          <p className="mt-2 text-sm text-ink-muted">
-            Sign in to reach your dashboard — clinic front desk to chairside, student chair to
-            staff sign-off.
-          </p>
-        </div>
-
-        <form onSubmit={submit} noValidate className="mt-8 flex flex-col gap-5">
-          <Field label="Work email" required>
-            <Input
-              autoFocus
-              type="email"
-              name="email"
-              autoComplete="username"
-              placeholder="you@avicena.clinic"
-              leftIcon={<Mail className="h-4 w-4" />}
-              value={form.email}
-              onChange={set("email")}
-              disabled={locked}
-            />
-          </Field>
-
-          <div className="flex flex-col gap-1.5">
-            <Field
-              label="Password"
-              required
-              counter={
-                <Link
-                  to={site.contact}
-                  className="text-[12px] font-bold text-brand-600 transition hover:text-accent-600"
-                >
-                  Forgot password?
-                </Link>
-              }
-            >
-              <Input
-                type={reveal ? "text" : "password"}
-                name="password"
-                autoComplete="current-password"
-                placeholder="••••••••"
-                leftIcon={<Lock className="h-4 w-4" />}
-                value={form.password}
-                onChange={set("password")}
-                onKeyUp={watchCapsLock}
-                onKeyDown={watchCapsLock}
-                onBlur={() => setCapsLock(false)}
-                disabled={locked}
-                rightSlot={
-                  <IconButton
-                    size="sm"
-                    variant="ghost"
-                    label={reveal ? "Hide password" : "Show password"}
-                    onClick={() => setReveal((prev) => !prev)}
-                    tabIndex={-1}
-                  >
-                    {reveal ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </IconButton>
-                }
-              />
-            </Field>
-
-            {capsLock ? (
-              <span className="text-[12px] font-semibold text-warning-ink">
-                Caps Lock is on.
-              </span>
-            ) : null}
+      <main className="flex flex-1 items-center justify-center py-10">
+        <div className="w-full max-w-[440px]">
+          <div className="text-center">
+            <p className="s-kicker !text-[11px]">{t(slogan)}</p>
+            <h1 className="s-title mt-4 !text-[clamp(2rem,4vw,2.6rem)]">
+              {t({ en: "Welcome back.", ar: "مرحبًا بعودتك." })}
+            </h1>
+            <p className="s-muted mt-3 text-[15.5px]">
+              {t({ en: "Sign in to your Odenta workspace.", ar: "سجّل الدخول إلى مساحة عملك في أودنتا." })}
+            </p>
           </div>
 
-          {/* One region for both messages, so a screen reader hears the change
-              rather than only sighted users seeing the box appear. */}
-          <div aria-live="polite">
-            {locked ? (
-              <p className="flex items-start gap-2.5 rounded-xl bg-warning-soft px-3.5 py-3 text-[13px] font-semibold text-warning-ink">
-                <AlertCircle className="mt-px h-4 w-4 shrink-0" />
-                <span>
-                  Too many attempts. Try again in {mmss(lockedUntil - now)}, or{" "}
-                  <Link to={site.contact} className="underline underline-offset-2">
-                    ask us to reset it
+          <div className="s-glass relative mt-8 overflow-hidden rounded-[32px] p-7 sm:p-9">
+            <form onSubmit={submit} noValidate className="flex flex-col gap-5">
+              <label className="flex flex-col gap-2">
+                <span className="s-muted text-[13.5px] font-medium">{t({ en: "Email", ar: "البريد الإلكتروني" })}</span>
+                <GlassInput
+                  icon={Mail}
+                  autoFocus
+                  type="email"
+                  name="email"
+                  dir="ltr"
+                  autoComplete="username"
+                  placeholder="you@clinic.com"
+                  value={form.email}
+                  onChange={set("email")}
+                  disabled={locked}
+                />
+              </label>
+
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center justify-between gap-3">
+                  <label htmlFor="signin-password" className="s-muted text-[13.5px] font-medium">
+                    {t({ en: "Password", ar: "كلمة المرور" })}
+                  </label>
+                  <Link to={site.contact} className="s-focus s-accent rounded text-[13px] font-medium hover:opacity-80">
+                    {t({ en: "Forgot password?", ar: "نسيت كلمة المرور؟" })}
                   </Link>
-                  .
-                </span>
-              </p>
-            ) : error ? (
-              <p className="flex items-start gap-2.5 rounded-xl bg-danger-soft px-3.5 py-3 text-[13px] font-semibold text-danger">
-                <AlertCircle className="mt-px h-4 w-4 shrink-0" />
-                <span>
-                  {error}
-                  {remaining < MAX_ATTEMPTS ? (
-                    <span className="mt-0.5 block font-medium text-danger/80">
-                      {remaining} {remaining === 1 ? "attempt" : "attempts"} left before the form
-                      locks for five minutes.
+                </div>
+                <GlassInput
+                  icon={Lock}
+                  id="signin-password"
+                  type={reveal ? "text" : "password"}
+                  name="password"
+                  dir="ltr"
+                  autoComplete="current-password"
+                  placeholder="••••••••"
+                  value={form.password}
+                  onChange={set("password")}
+                  onKeyUp={watchCapsLock}
+                  onKeyDown={watchCapsLock}
+                  onBlur={() => setCapsLock(false)}
+                  disabled={locked}
+                  trailing={
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      onClick={() => setReveal((prev) => !prev)}
+                      aria-label={
+                        reveal
+                          ? t({ en: "Hide password", ar: "إخفاء كلمة المرور" })
+                          : t({ en: "Show password", ar: "إظهار كلمة المرور" })
+                      }
+                      className="s-soft inline-flex h-9 w-9 items-center justify-center rounded-full transition hover:bg-[var(--s-glass-strong)] hover:text-[var(--s-text)]"
+                    >
+                      {reveal ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  }
+                />
+                {capsLock ? (
+                  <span className="text-[12.5px] font-medium text-amber-500">
+                    {t({ en: "Caps Lock is on.", ar: "زر الأحرف الكبيرة مفعّل." })}
+                  </span>
+                ) : null}
+              </div>
+
+              {/* One region for both messages, so a screen reader hears the change
+                  rather than only sighted users seeing the box appear. */}
+              <div aria-live="polite">
+                {locked ? (
+                  <p className="flex items-start gap-2.5 rounded-2xl bg-amber-500/10 px-4 py-3 text-[13.5px] font-medium text-amber-600">
+                    <AlertCircle className="mt-px h-4 w-4 shrink-0" />
+                    <span>
+                      {t({ en: "Too many attempts. Try again in", ar: "محاولات كثيرة. حاول مرة أخرى بعد" })}{" "}
+                      <span dir="ltr">{mmss(lockedUntil - now)}</span>
+                      {t({ en: ", or ", ar: "، أو " })}
+                      <Link to={site.contact} className="underline underline-offset-2">
+                        {t({ en: "ask us to reset it", ar: "اطلب منا إعادة تعيينها" })}
+                      </Link>
+                      .
                     </span>
-                  ) : null}
-                </span>
-              </p>
+                  </p>
+                ) : error ? (
+                  <p className="flex items-start gap-2.5 rounded-2xl bg-rose-500/10 px-4 py-3 text-[13.5px] font-medium text-rose-500">
+                    <AlertCircle className="mt-px h-4 w-4 shrink-0" />
+                    <span>
+                      {error}
+                      {remaining < MAX_ATTEMPTS ? (
+                        <span className="mt-0.5 block font-normal opacity-80">
+                          {t({
+                            en: `${remaining} ${remaining === 1 ? "attempt" : "attempts"} left before the form locks for five minutes.`,
+                            ar: `تبقّى ${remaining} ${remaining === 1 ? "محاولة" : "محاولات"} قبل قفل النموذج لمدة خمس دقائق.`,
+                          })}
+                        </span>
+                      ) : null}
+                    </span>
+                  </p>
+                ) : null}
+              </div>
+
+              <button type="submit" disabled={locked || busy} className="s-btn s-btn-primary s-btn-lg w-full">
+                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                {busy ? t({ en: "Signing in…", ar: "جارٍ تسجيل الدخول…" }) : t({ en: "Sign in", ar: "تسجيل الدخول" })}
+                {busy ? null : arrow}
+              </button>
+            </form>
+
+            {providers.length ? (
+              <div className="mt-7">
+                <div className="flex items-center gap-3">
+                  <span className="s-divider flex-1" />
+                  <span className="s-soft text-[12px] font-medium uppercase tracking-[0.14em]">
+                    {t({ en: "or continue with", ar: "أو تابع باستخدام" })}
+                  </span>
+                  <span className="s-divider flex-1" />
+                </div>
+
+                <div className={cn("mt-5 grid gap-3", providers.length > 1 ? "sm:grid-cols-2" : "sm:grid-cols-1")}>
+                  {providers.map((provider) => (
+                    <button
+                      key={provider.id}
+                      type="button"
+                      disabled={locked || busy || Boolean(pending)}
+                      onClick={() => startProviderSignIn(provider.id)}
+                      className="s-btn s-btn-glass s-btn-md w-full"
+                    >
+                      {pending === provider.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : provider.id === "google" ? (
+                        <GoogleMark className="h-[18px] w-[18px]" />
+                      ) : (
+                        <MicrosoftMark className="h-[18px] w-[18px]" />
+                      )}
+                      {provider.label}
+                    </button>
+                  ))}
+                </div>
+
+                <p className="s-soft mt-4 text-[12.5px] leading-relaxed">
+                  {t({
+                    en: `Your Odenta account has to exist already — signing in with ${providers.map((p) => p.label).join(" or ")} does not create one. Ask your administrator if you do not have access yet.`,
+                    ar: `يجب أن يكون حسابك في أودنتا موجودًا مسبقًا — تسجيل الدخول عبر ${providers.map((p) => p.label).join(" أو ")} لا ينشئ حسابًا. اطلب من المسؤول منحك الوصول إن لم يكن لديك.`,
+                  })}
+                </p>
+              </div>
             ) : null}
           </div>
 
-          <Button
-            type="submit"
-            block
-            size="lg"
-            loading={busy}
-            disabled={locked}
-            rightIcon={busy ? null : <ArrowRight className="h-4 w-4" />}
-          >
-            {busy ? "Signing in…" : "Sign in"}
-          </Button>
-        </form>
-
-        {providers.length ? (
-          <div className="mt-8">
-            <div className="flex items-center gap-3">
-              <span className="h-px flex-1 bg-slate-200" />
-              <span className="od-label">or continue with</span>
-              <span className="h-px flex-1 bg-slate-200" />
-            </div>
-
-            <div
-              className={cn(
-                "mt-5 grid gap-3",
-                providers.length > 1 ? "sm:grid-cols-2" : "sm:grid-cols-1"
-              )}
-            >
-              {providers.map((provider) => (
-                <Button
-                  key={provider.id}
-                  type="button"
-                  variant="secondary"
-                  size="lg"
-                  block
-                  disabled={locked || busy || Boolean(pending)}
-                  loading={pending === provider.id}
-                  onClick={() => startProviderSignIn(provider.id)}
-                  leftIcon={
-                    pending === provider.id ? null : provider.id === "google" ? (
-                      <GoogleMark className="h-[18px] w-[18px]" />
-                    ) : (
-                      <MicrosoftMark className="h-[18px] w-[18px]" />
-                    )
-                  }
-                >
-                  {provider.label}
-                </Button>
-              ))}
-            </div>
-
-            <p className="mt-4 text-[12px] leading-relaxed text-ink-soft">
-              Your Odenta account has to exist already — signing in with {providers.map((p) => p.label).join(" or ")}{" "}
-              does not create one. Ask your administrator if you do not have access yet.
-            </p>
-          </div>
-        ) : null}
-
-        <p className="mt-10 text-[12px] leading-relaxed text-ink-soft">
-          Patient records are protected health information. By signing in you accept the{" "}
-          <Link to={site.terms} className="font-semibold text-brand-600 hover:text-accent-600">
-            terms
-          </Link>{" "}
-          and{" "}
-          <Link to={site.privacy} className="font-semibold text-brand-600 hover:text-accent-600">
-            privacy policy
-          </Link>
-          .
-        </p>
-      </div>
-
-      {/* -------------------------------------------------- marketing panel */}
-      <div className="relative hidden flex-1 items-center justify-center overflow-hidden bg-od-gradient-deep lg:flex">
-        <img
-          src={images.heroWide}
-          alt=""
-          aria-hidden="true"
-          className="absolute inset-0 h-full w-full object-cover opacity-[0.14]"
-        />
-
-        <div className="relative z-10 max-w-[460px] px-12 text-white">
-          <span className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-3.5 py-1.5 text-[12px] font-extrabold uppercase tracking-[0.14em] text-white">
-            <Sparkles className="h-3.5 w-3.5" />
-            Role based
-          </span>
-
-          <h2 className="mt-6 text-[32px] font-extrabold leading-tight text-white">
-            One record. Every way of working.
-          </h2>
-          <p className="mt-4 text-[15px] leading-relaxed text-white/80">
-            In a clinic the dentist charts, the assistant turns the room and the front desk takes
-            the payment. In a dental school the student treats and the staff member signs. Everyone
-            works from the same patient record, and sees only what their role needs.
+          <p className="s-muted mt-7 text-center text-[14.5px]">
+            {t({ en: "New to Odenta?", ar: "جديد على أودنتا؟" })}{" "}
+            <Link to={site.demo} className="s-focus s-accent rounded font-semibold hover:opacity-80">
+              {t({ en: "Book a demo", ar: "احجز عرضًا" })}
+            </Link>
           </p>
 
-          <ul className="mt-9 flex flex-col gap-3.5">
-            {[
-              "FDI, Universal and Palmer notation",
-              "Six-point periodontal charting",
-              "Staff sign-off on every student step",
-              "Requirement tracking across the rotation",
-            ].map((line) => (
-              <li key={line} className="flex items-center gap-3 text-[14.5px] text-white/90">
-                <ShieldCheck className="h-4 w-4 shrink-0 text-accent-200" />
-                {line}
-              </li>
-            ))}
-          </ul>
-
-          <div className="mt-10 flex items-center gap-3 rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur-sm">
-            <ToothMark className="h-9 w-9 shrink-0" gradientId="signInMark" />
-            <p className="text-[13px] leading-relaxed text-white/85">
-              New here?{" "}
-              <Link to={site.contact} className="font-bold text-white underline underline-offset-2">
-                Talk to us
-              </Link>{" "}
-              about bringing Odenta to your clinic or campus.
-            </p>
-          </div>
+          <p className="s-soft mx-auto mt-4 max-w-sm text-center text-[12.5px] leading-relaxed">
+            {t({
+              en: "Patient records are protected health information. By signing in you accept the",
+              ar: "سجلات المرضى معلومات صحية محمية. بتسجيل الدخول فإنك توافق على",
+            })}{" "}
+            <Link to={site.terms} className="s-accent hover:opacity-80">
+              {t({ en: "terms", ar: "الشروط" })}
+            </Link>{" "}
+            {t({ en: "and", ar: "و" })}{" "}
+            <Link to={site.privacy} className="s-accent hover:opacity-80">
+              {t({ en: "privacy policy", ar: "سياسة الخصوصية" })}
+            </Link>
+            .
+          </p>
         </div>
-
-        <div className="absolute -right-24 -top-24 h-[420px] w-[420px] rounded-full bg-white/10" />
-        <div className="absolute -bottom-32 -left-16 h-[360px] w-[360px] rounded-full bg-white/5" />
-      </div>
+      </main>
     </div>
   );
 }

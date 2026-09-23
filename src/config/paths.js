@@ -47,6 +47,8 @@ export const site = {
   clinics: "/clinics",
   about: "/about",
   contact: "/contact",
+  /** Book a demo — the lead form for universities and clinics. */
+  demo: "/demo",
   tryAi: "/try-ai",
   pricing: "/pricing",
   privacy: "/privacy",

@@ -38,6 +38,16 @@ export function LanguageProvider({ children }) {
     window.localStorage.setItem(STORAGE_KEY, language);
   }, [language, dir]);
 
+  /* The portals are English, left-to-right. Leaving the public surface (a
+     sign-in, "My dashboard") must not carry an Arabic visitor's direction in. */
+  useEffect(
+    () => () => {
+      document.documentElement.lang = "en";
+      document.documentElement.dir = "ltr";
+    },
+    []
+  );
+
   const value = useMemo(
     () => ({
       language,

@@ -1,141 +1,99 @@
-import { ArrowRight, Check, LayoutGrid } from "lucide-react";
+import { Link } from "react-router-dom";
+import { ArrowRight, Sparkles } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { site } from "@/config/paths";
 import { useLanguage, useT } from "@/site/i18n/LanguageContext";
-import { assurance, audiences, hero, modules } from "@/site/content/services";
-import {
-  CTABand,
-  FeatureCard,
-  PageHero,
-  Reveal,
-  Section,
-  SectionHeading,
-  SiteButton,
-} from "@/site/components";
+import { audiences, foundation, hero, next } from "@/site/content/services";
+import { CTABand, PageHero, Reveal, Section, SectionHeading } from "@/site/components";
 
-/** "For universities" / "For clinics" — image on one side, claims on the other. */
-function AudienceBlock({ audience, flipped }) {
+function AudiencePanel({ audience, delay }) {
   const t = useT();
   const { isRtl } = useLanguage();
   const Icon = audience.icon;
 
   return (
-    <Reveal
-      className={cn(
-        "grid items-center gap-10 lg:grid-cols-2 lg:gap-16",
-        flipped && "lg:[&>*:first-child]:order-2"
-      )}
-    >
-      <div>
-        <span className="od-eyebrow">
-          <Icon className="h-3.5 w-3.5" />
-          {t(audience.eyebrow)}
+    <Reveal delay={delay} className="s-glass flex flex-col rounded-[34px] p-8 sm:p-10">
+      <div className="flex items-center gap-3">
+        <span className="s-icon-tile h-12 w-12">
+          <Icon className="h-6 w-6" />
         </span>
+        <span className="s-kicker !text-[11px]">{t(audience.eyebrow)}</span>
+      </div>
 
-        <h3 className="mt-5 text-[28px] font-extrabold leading-tight text-brand-700 md:text-[34px]">
-          {t(audience.title)}
-        </h3>
-        <p className="mt-4 text-[16px] leading-relaxed text-ink-muted">{t(audience.description)}</p>
+      <h2 className="mt-7 text-[clamp(1.6rem,2.6vw,2.2rem)] leading-tight">{t(audience.title)}</h2>
+      <p className="s-muted mt-3 text-[16px] leading-relaxed">{t(audience.description)}</p>
 
-        <ul className="mt-7 flex flex-col gap-3.5">
-          {audience.points.map((point, index) => (
-            <li key={index} className="flex items-start gap-3">
-              <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent-50 text-accent-600">
-                <Check className="h-3.5 w-3.5" strokeWidth={3} />
+      <ul className="mt-8 flex flex-1 flex-col">
+        {audience.items.map((item, index) => {
+          const ItemIcon = item.icon;
+          return (
+            <li key={index} className={cn("flex items-start gap-4 py-4", index > 0 && "s-hairline border-t")}>
+              <span className="s-chip !h-10 !w-10 shrink-0 !justify-center !p-0">
+                <ItemIcon className="s-accent h-[18px] w-[18px]" />
               </span>
-              <span className="text-[15px] text-ink-muted">{t(point)}</span>
+              <span>
+                <span className="block text-[16px] font-semibold">{t(item.title)}</span>
+                <span className="s-muted mt-0.5 block text-[14.5px] leading-relaxed">{t(item.description)}</span>
+              </span>
             </li>
-          ))}
-        </ul>
+          );
+        })}
+      </ul>
 
-        <SiteButton
-          to={audience.to}
-          className="mt-8"
-          rightIcon={<ArrowRight className={cn("h-4 w-4", isRtl && "rotate-180")} />}
-        >
-          {t(audience.cta)}
-        </SiteButton>
-      </div>
-
-      <div className="relative">
-        <div className="absolute -inset-1 rounded-[32px] bg-od-gradient opacity-20 blur-lg" />
-        <div className="relative overflow-hidden rounded-[28px] border border-white bg-white shadow-lift">
-          <img
-            src={audience.image}
-            alt={t(audience.title)}
-            className="aspect-[16/10] w-full object-cover"
-            loading="lazy"
-          />
-        </div>
-      </div>
+      <Link
+        to={audience.to}
+        className="s-focus s-accent mt-6 inline-flex items-center gap-1.5 self-start rounded text-[15px] font-semibold transition-all hover:gap-2.5"
+      >
+        {t(audience.cta)}
+        <ArrowRight className={cn("h-4 w-4", isRtl && "rotate-180")} />
+      </Link>
     </Reveal>
   );
 }
 
 export default function ServicesPage() {
   const t = useT();
-  const { isRtl } = useLanguage();
 
   return (
     <>
       <PageHero
         eyebrow={hero.eyebrow}
-        eyebrowIcon={<LayoutGrid className="h-3.5 w-3.5" />}
         title={hero.title}
         highlight={hero.highlight}
         description={hero.description}
-        actions={
-          <>
-            <SiteButton
-              to={site.contact}
-              rightIcon={<ArrowRight className={cn("h-4 w-4", isRtl && "rotate-180")} />}
-            >
-              {t({ en: "Book a demo", ar: "احجز عرضًا توضيحيًا" })}
-            </SiteButton>
-            <SiteButton variant="ghost" to={site.pricing}>
-              {t({ en: "See pricing", ar: "شاهد الأسعار" })}
-            </SiteButton>
-          </>
-        }
       />
 
-      <Section tone="plain" className="pt-0">
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {modules.map((module, index) => (
-            <FeatureCard key={module.key} feature={module} delay={(index % 3) * 90} />
-          ))}
-        </div>
-      </Section>
-
-      <Section tone="soft">
-        <SectionHeading
-          eyebrow={{ en: "Two programmes", ar: "برنامجان" }}
-          title={{ en: "Shaped around", ar: "مصمم حول" }}
-          highlight={{ en: "how you work", ar: "طريقة عملك" }}
-          description={{
-            en: "The modules are the same. What changes is who is in the chair beside the patient, and what the platform asks of them.",
-            ar: "الوحدات نفسها. ما يتغير هو من يجلس بجوار المريض وما تطلبه المنصة منه.",
-          }}
-        />
-
-        <div className="mt-16 flex flex-col gap-20 lg:gap-24">
+      <Section className="pt-4 lg:pt-6">
+        <div className="grid gap-6 lg:grid-cols-2">
           {audiences.map((audience, index) => (
-            <AudienceBlock key={audience.key} audience={audience} flipped={index % 2 === 1} />
+            <AudiencePanel key={audience.key} audience={audience} delay={index * 120} />
           ))}
         </div>
       </Section>
 
-      <Section tone="plain">
-        <SectionHeading
-          eyebrow={{ en: "Assurance", ar: "الضمانات" }}
-          title={{ en: "What you can", ar: "ما يمكنك" }}
-          highlight={{ en: "count on", ar: "الاعتماد عليه" }}
-        />
-        <div className="mt-14 grid gap-6 md:grid-cols-3">
-          {assurance.map((item, index) => (
-            <FeatureCard key={item.key} feature={item} delay={index * 90} />
-          ))}
+      <Section>
+        <SectionHeading eyebrow={foundation.eyebrow} title={foundation.title} highlight={foundation.highlight} />
+        <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          {foundation.items.map((item, index) => {
+            const Icon = item.icon;
+            return (
+              <Reveal key={item.key} delay={index * 80} className="s-glass s-glass-hover rounded-[26px] p-7">
+                <span className="s-chip !h-11 !w-11 !justify-center !p-0">
+                  <Icon className="s-accent h-5 w-5" />
+                </span>
+                <h3 className="mt-6 text-[18px]">{t(item.title)}</h3>
+                <p className="s-muted mt-2 text-[14.5px] leading-relaxed">{t(item.description)}</p>
+              </Reveal>
+            );
+          })}
         </div>
+
+        <Reveal className="mt-14 flex flex-col items-center gap-3 text-center">
+          <span className="s-chip">
+            <Sparkles className="s-accent h-3.5 w-3.5" />
+            {t(next.title)}
+          </span>
+          <p className="s-muted max-w-lg text-[15px]">{t(next.description)}</p>
+        </Reveal>
       </Section>
 
       <CTABand />
