@@ -19,7 +19,13 @@ export function UniversityLayout() {
   const [collapsed, setCollapsed] = useLocalStorage("odenta.uni.sidebar.collapsed", false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const { user, role, preview } = useAuth();
-  const { data: campus } = useAsync(() => universityService.getCampus(), []);
+  /* The founders' account belongs to no campus, so the API answers 403; skip
+     the call rather than log a failure on every platform page. */
+  const noCampus = portalFor(role) === PORTALS.PLATFORM;
+  const { data: campus } = useAsync(
+    () => (noCampus ? Promise.resolve(null) : universityService.getCampus()),
+    [noCampus]
+  );
   const { pathname } = useLocation();
   const isDesktop = useIsDesktop();
 

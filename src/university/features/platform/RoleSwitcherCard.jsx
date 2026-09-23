@@ -55,7 +55,11 @@ export default function RoleSwitcherCard({ tenants = [] }) {
    * The card falls back to preview-only rather than rendering a failure.
    */
   const { data } = useAsync(
-    () => platformService.getDevSignInTargets().catch(() => null),
+    /* A production build never talks to a dev backend, so don't ask. */
+    () =>
+      import.meta.env.DEV
+        ? platformService.getDevSignInTargets().catch(() => null)
+        : Promise.resolve(null),
     []
   );
 
