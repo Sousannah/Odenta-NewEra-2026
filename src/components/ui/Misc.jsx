@@ -51,8 +51,9 @@ export function SearchInput({
 
 const BANNER_TONES = {
   info: "bg-brand-50 text-brand-800",
-  warning: "bg-warning-soft text-[#8C6103]",
+  warning: "bg-warning-soft text-warning-ink",
   success: "bg-success-soft text-success-strong",
+  danger: "bg-danger-soft text-danger",
   neutral: "bg-slate-50 text-ink-muted",
 };
 
@@ -113,9 +114,9 @@ const FILE_ICON = {
 };
 
 const FILE_TONE = {
-  image: "bg-[#D9F7F1] text-[#0E9F8A]",
-  pdf: "bg-[#FDE2E4] text-[#D5364C]",
-  doc: "bg-[#DDE9FD] text-brand-700",
+  image: "bg-accent-50 text-accent-700",
+  pdf: "bg-danger-soft text-danger-ink",
+  doc: "bg-brand-50 text-brand-700",
 };
 
 export function FileDrop({ files = [], onAdd, onRemove, maxFiles = 5, maxSizeLabel = "10MB" }) {
@@ -225,7 +226,12 @@ export function FileDrop({ files = [], onAdd, onRemove, maxFiles = 5, maxSizeLab
 export function Pagination({ page = 1, pageCount = 1, onChange, total, className }) {
   const pages = Array.from({ length: pageCount }, (_, i) => i + 1).slice(0, 7);
   return (
-    <div className={cn("flex items-center justify-between gap-4 px-1 py-3", className)}>
+    <div
+      className={cn(
+        "flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-1 py-3",
+        className
+      )}
+    >
       <span className="text-[13px] text-ink-soft">
         {total != null ? `${total} result${total === 1 ? "" : "s"}` : null}
       </span>
@@ -238,13 +244,19 @@ export function Pagination({ page = 1, pageCount = 1, onChange, total, className
         >
           Prev
         </button>
+
+        {/* Seven numbered buttons do not fit a phone; it gets "3 / 12" instead. */}
+        <span className="px-2 text-[13px] font-semibold text-ink-muted sm:hidden">
+          {page} / {pageCount}
+        </span>
+
         {pages.map((item) => (
           <button
             key={item}
             type="button"
             onClick={() => onChange?.(item)}
             className={cn(
-              "h-8 w-8 rounded-lg text-[13px] font-semibold transition",
+              "hidden h-8 w-8 rounded-lg text-[13px] font-semibold transition sm:block",
               item === page
                 ? "bg-brand-600 text-white"
                 : "text-ink-muted hover:bg-slate-100"

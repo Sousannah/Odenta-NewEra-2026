@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { differenceInCalendarDays } from "date-fns";
-import { AlertTriangle, Plus, ShieldCheck } from "lucide-react";
+import { AlertTriangle, Hourglass, Microscope, Plus, ShieldCheck } from "lucide-react";
 import { useAsync, useDisclosure } from "@/hooks";
 import { useToast } from "@/components/ui/Toast";
-import { clinicalService, inventoryService } from "@/services";
+import { assistantService } from "@/services";
 import { formatDate } from "@/lib/format";
 import {
   CYCLE_RESULTS,
@@ -18,7 +18,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
 import { Field, Input, Select, Textarea } from "@/components/ui/Field";
 import { InfoBanner } from "@/components/ui/Misc";
-import { PageHeader, StatCard, toneFor, labelFor } from "@/components/shared";
+import { PageHeader, StatCard, StatGrid, toneFor, labelFor } from "@/components/shared";
 
 function CycleModal({ open, onClose, sterilizers, onSaved }) {
   const toast = useToast();
@@ -28,9 +28,18 @@ function CycleModal({ open, onClose, sterilizers, onSaved }) {
     load: "",
     chemicalIndicator: "pass",
     biologicalIndicator: "",
+    /**
+     * Whether this load carries a spore test.
+     *
+     * The flag that decides what an unread biological indicator *means*.
+     * Without it either every routine load sits pending forever, or a spore
+     * test reports a pass before the incubator has been read — and the second
+     * is the one that matters, because it is a claim the steriliser works that
+     * nobody has checked.
+     */
+    sporeTest: false,
     temperature: 134,
     holdMinutes: 4,
-    operator: "",
     notes: "",
   });
   const [saving, setSaving] = useState(false);
@@ -40,14 +49,40 @@ function CycleModal({ open, onClose, sterilizers, onSaved }) {
   const save = async () => {
     setSaving(true);
     try {
-      await clinicalService.logSterilizationCycle({
-        ...form,
+      /**
+       * Two fields are deliberately *not* sent any more.
+       *
+       * `cycleNumber` used to be `Math.floor(Math.random() * 1000) + 8800`. A
+       * register numbered at random has duplicates and gaps, and "cycle 8814"
+       * is the identifier a load of instruments is traced back by — so a
+       * collision means two loads share an identity and neither can be cleared
+       * or recalled independently. The server issues it from a per-clinic
+       * atomic sequence.
+       *
+       * `result` used to be decided here as `chemical === "fail" ? "fail" :
+       * "pending"`, which left every ordinary passing load sitting pending
+       * forever and made the "awaiting result" tile meaningless. The server
+       * derives it: a chemical indicator releases a routine load, and only a
+       * spore-test load waits on the incubator.
+       */
+      const created = await assistantService.logCycle({
         sterilizerId: form.sterilizerId || sterilizers[0]?.id,
-        cycleNumber: Math.floor(Math.random() * 1000) + 8800,
-        result: form.chemicalIndicator === "fail" ? "fail" : "pending",
+        type: form.type,
+        load: form.load,
+        chemicalIndicator: form.chemicalIndicator || null,
         biologicalIndicator: form.biologicalIndicator || null,
+        sporeTest: form.sporeTest,
+        temperature: form.temperature,
+        holdMinutes: form.holdMinutes,
+        notes: form.notes,
       });
-      toast.success("Cycle recorded", "Result will update once the indicator is read");
+
+      toast.success(
+        `Cycle ${created?.cycleNumber ?? ""} recorded`.trim(),
+        created?.result === "pending"
+          ? "Waiting on the incubator — record the reading when it comes back"
+          : `Result: ${created?.result ?? "recorded"}`
+      );
       onSaved?.();
       onClose();
     } catch (cause) {
@@ -123,12 +158,22 @@ function CycleModal({ open, onClose, sterilizers, onSaved }) {
               onChange={(event) => update({ holdMinutes: Number(event.target.value) })}
             />
           </Field>
-          <Field label="Operator">
-            <Input
-              placeholder="Your name"
-              value={form.operator}
-              onChange={(event) => update({ operator: event.target.value })}
-            />
+          {/**
+           * The operator field is gone on purpose.
+           *
+           * It used to be a free-text box the person filled in themselves, which
+           * means a sign-off in a legal register attributable to whatever was
+           * typed. The server stamps it from the session instead — a signature
+           * the client can set is a signature anyone can forge.
+           */}
+          <Field label="Spore test" hint="does this load carry a biological indicator?">
+            <Select
+              value={form.sporeTest ? "yes" : "no"}
+              onChange={(event) => update({ sporeTest: event.target.value === "yes" })}
+            >
+              <option value="no">Routine load</option>
+              <option value="yes">Weekly spore test</option>
+            </Select>
           </Field>
         </div>
 
@@ -178,22 +223,51 @@ export default function SterilisationPage() {
   const form = useDisclosure();
 
   const { data: cycles = [], loading, refetch } = useAsync(
-    () => clinicalService.getSterilizationCycles(),
-    [],
-    []
-  );
-  const { data: peripherals = [] } = useAsync(
-    () => inventoryService.getPeripherals(),
+    () => assistantService.getCycles(),
     [],
     []
   );
 
-  const sterilizers = peripherals.filter((item) => item.category === "Sterilization");
-  const lastSpore = cycles.find((cycle) => cycle.biologicalIndicator);
-  const sporeAge = lastSpore
-    ? differenceInCalendarDays(new Date(), new Date(lastSpore.startedAt))
+  /**
+   * The tile strip and the spore warning, folded server-side.
+   *
+   * Counted here before, which meant the screen had to hold the whole register
+   * to produce four numbers — and the sterilisation register is the one table
+   * in a practice that is never pruned, because it is a legal record. The list
+   * below is now a capped recent page, so counting it would be wrong as well as
+   * expensive.
+   */
+  const { data: summary, refetch: refetchSummary } = useAsync(
+    () => assistantService.getSterilisationSummary(),
+    [],
+    null
+  );
+
+  /**
+   * The autoclaves, from the sterilisation surface rather than the equipment
+   * register.
+   *
+   * `/inventory/peripherals` is gated on `peripheral:view`, which a **dentist
+   * does not hold** — and a dentist can open this page, because they hold
+   * `sterilization:view`. Pointing the dropdown at the register 403'd for
+   * exactly the role most likely to be reading a cycle result, and blanked the
+   * page. This endpoint serves the four fields the dropdown needs under the
+   * permission that already gates the screen; purchase price, invoice number
+   * and service contract stay behind `peripheral:view`, which is what that
+   * permission is actually protecting.
+   */
+  const { data: sterilizers = [] } = useAsync(() => assistantService.getSterilizers(), [], []);
+
+  const spore = summary?.spore ?? {};
+  const sporeAge = spore.lastAt
+    ? differenceInCalendarDays(new Date(), new Date(spore.lastAt))
     : null;
-  const sporeOverdue = sporeAge != null && sporeAge > SPORE_TEST_INTERVAL_DAYS;
+  const sporeOverdue = Boolean(spore.due);
+
+  const reload = () => {
+    refetch();
+    refetchSummary();
+  };
 
   const columns = [
     {
@@ -203,7 +277,10 @@ export default function SterilisationPage() {
       render: (row) => (
         <span className="min-w-0">
           <span className="block text-[13.5px] font-bold text-ink">#{row.cycleNumber}</span>
-          <span className="block text-[12px] text-ink-soft">Class {row.type}</span>
+          <span className="block text-[12px] text-ink-soft">
+            Class {row.type ?? "—"}
+            {row.sporeTest ? " · spore test" : ""}
+          </span>
         </span>
       ),
     },
@@ -246,7 +323,7 @@ export default function SterilisationPage() {
   ];
 
   return (
-    <div className="flex flex-col gap-5 p-6">
+    <div className="flex flex-col gap-4 p-4 sm:gap-5 sm:p-6">
       <PageHeader
         title="Sterilisation"
         description="Cycle-level traceability for every instrument load."
@@ -260,41 +337,41 @@ export default function SterilisationPage() {
       />
 
       {sporeOverdue ? (
-        <InfoBanner tone="warning" icon={<AlertTriangle className="h-4 w-4" />}>
-          The last biological (spore) test was {sporeAge} days ago — the interval is{" "}
-          {SPORE_TEST_INTERVAL_DAYS} days. Run one on the next load.
+        <InfoBanner tone="danger" icon={<AlertTriangle className="h-4 w-4" />}>
+          {spore.lastAt
+            ? `The last passing biological (spore) test was ${sporeAge} days ago — the interval is ${spore.intervalDays ?? SPORE_TEST_INTERVAL_DAYS} days. Run one on the next load.`
+            : "No passing spore test is on file. The steriliser has no evidence it is working — run one today."}
         </InfoBanner>
       ) : null}
 
-      {cycles.some((cycle) => cycle.result === "fail") ? (
+      {/* Counted server-side: the page below is a capped recent window, so a
+          failure older than it would otherwise stop being mentioned. */}
+      {(summary?.failed ?? 0) > 0 ? (
         <InfoBanner tone="warning" icon={<AlertTriangle className="h-4 w-4" />}>
-          A failed cycle is on record. Any load from a failed cycle must be reprocessed before use —
-          check the notes column.
+          {summary.failed} failed {summary.failed === 1 ? "cycle is" : "cycles are"} on record. Any
+          load from a failed cycle must be reprocessed before use — check the notes column.
         </InfoBanner>
       ) : null}
 
-      <div className="grid gap-4 sm:grid-cols-4">
+      <StatGrid cols={4}>
         <StatCard
           label="Cycles logged"
-          value={cycles.length}
+          value={summary?.total ?? 0}
           icon={<ShieldCheck className="h-5 w-5" />}
         />
         <StatCard
-          label="Awaiting result"
-          value={cycles.filter((cycle) => cycle.result === "pending").length}
-          tone="warning"
+          label="Awaiting result" value={summary?.pending ?? 0} tone="warning"
+          icon={<Hourglass className="h-5 w-5" />}
         />
         <StatCard
-          label="Failed"
-          value={cycles.filter((cycle) => cycle.result === "fail").length}
-          tone="danger"
+          label="Failed" value={summary?.failed ?? 0} tone="danger"
+          icon={<AlertTriangle className="h-5 w-5" />}
         />
         <StatCard
-          label="Last spore test"
-          value={lastSpore ? `${sporeAge} d ago` : "Never"}
-          tone={sporeOverdue ? "danger" : "success"}
+          label="Last spore test" value={spore.lastAt ? `${sporeAge} d ago` : "Never"} tone={sporeOverdue ? "danger" : "success"}
+          icon={<Microscope className="h-5 w-5" />}
         />
-      </div>
+      </StatGrid>
 
       <DataTable
         columns={columns}
@@ -324,7 +401,7 @@ export default function SterilisationPage() {
         open={form.isOpen}
         onClose={form.close}
         sterilizers={sterilizers}
-        onSaved={refetch}
+        onSaved={reload}
       />
     </div>
   );

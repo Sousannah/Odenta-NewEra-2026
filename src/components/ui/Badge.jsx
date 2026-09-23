@@ -4,9 +4,9 @@ const TONES = {
   neutral: "bg-slate-100 text-ink-muted",
   brand: "bg-brand-100 text-brand-700",
   success: "bg-success-soft text-success-strong",
-  warning: "bg-warning-soft text-[#B27B04]",
+  warning: "bg-warning-soft text-warning-ink",
   danger: "bg-danger-soft text-danger",
-  info: "bg-info-soft text-[#2A7FD4]",
+  info: "bg-info-soft text-info-ink",
   outline: "border border-slate-200 bg-white text-ink-muted",
 };
 

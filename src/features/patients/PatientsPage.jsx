@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Toolbar, PatientAlerts, toneFor } from "@/components/shared";
 import { PatientFormModal } from "./PatientFormModal";
+import { app } from "@/config/paths";
 
 function PatientCard({ patient, onOpen }) {
   return (
@@ -48,7 +49,22 @@ function PatientCard({ patient, onOpen }) {
         </span>
       </div>
 
-      <PatientAlerts patient={patient} compact />
+      {/**
+       * Guarded on the field being *present*, not on it being truthy.
+       *
+       * The patient list row is the administrative half of the record and
+       * deliberately carries no `alerts`, `allergies` or `asa` — those live in
+       * the `records` container behind `patient_clinical:view`. So against the
+       * live API all three are absent here, and passing the row straight in
+       * makes `PatientAlerts` read it as an *unchecked history* and stamp an
+       * amber warning on every card in the list.
+       *
+       * Three states, and conflating any two is a bug: entries present (show
+       * the count), field present but empty or null (checked-and-clear, or
+       * not-checked), field absent (this caller may not read the record — say
+       * nothing).
+       */}
+      {"alerts" in patient ? <PatientAlerts patient={patient} compact /> : null}
 
       <div className="mt-auto flex items-center justify-between border-t border-slate-100 pt-3 text-[12px]">
         <span className="text-ink-soft">Last visit {formatDate(patient.lastVisited, "d MMM yyyy")}</span>
@@ -74,10 +90,13 @@ export default function PatientsPage() {
   const { data: patients = [], loading, refetch } = useAsync(
     () => patientService.getPatients({ status, q: query, risk }),
     [status, query, risk],
-    []
+    [],
+    /* The search text is part of the key: without it, typing a query and
+       clearing it would show the filtered rows under "all". */
+    { key: `clinic:patients:${status}:${risk}:${query}` }
   );
 
-  const openPatient = (patient) => navigate(`/patients/${patient.id}`);
+  const openPatient = (patient) => navigate(app.patient(patient.id));
 
   const closeForm = () => {
     form.close();
@@ -99,7 +118,7 @@ export default function PatientsPage() {
           <span className="min-w-0">
             <span className="flex items-center gap-2">
               <span className="truncate text-[13.5px] font-bold text-ink">{row.name}</span>
-              <PatientAlerts patient={row} compact />
+              {"alerts" in row ? <PatientAlerts patient={row} compact /> : null}
             </span>
             <span className="block truncate text-[12px] text-ink-soft">{row.mrn}</span>
           </span>
@@ -181,7 +200,7 @@ export default function PatientsPage() {
                   value={query}
                   onChange={setQuery}
                   placeholder="Search name, MRN, email or phone…"
-                  className="w-[320px]"
+                  className="w-full sm:w-[320px]"
                 />
                 <MiniSelect
                   className="h-10"

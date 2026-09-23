@@ -56,15 +56,18 @@ export const initials = (name = "") =>
     .map((part) => part[0]?.toUpperCase() ?? "")
     .join("");
 
-/** Deterministic pastel avatar colour so mock users keep a stable identity. */
+/**
+ * Deterministic avatar colour so a user keeps a stable identity between
+ * sessions. Drawn from the Odenta palette rather than arbitrary pastels.
+ */
 const AVATAR_PALETTE = [
-  "bg-[#E879F9] text-white",
-  "bg-[#60A5FA] text-white",
-  "bg-[#34D399] text-white",
-  "bg-[#FBBF24] text-white",
-  "bg-[#F87171] text-white",
-  "bg-[#A78BFA] text-white",
-  "bg-[#22D3EE] text-white",
+  "bg-brand-600 text-white",
+  "bg-accent-500 text-white",
+  "bg-brand-400 text-white",
+  "bg-accent-700 text-white",
+  "bg-violet text-white",
+  "bg-warning text-white",
+  "bg-danger text-white",
 ];
 
 export const avatarTone = (seed = "") => {

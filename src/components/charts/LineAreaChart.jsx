@@ -10,14 +10,23 @@ import {
 } from "recharts";
 import { useState } from "react";
 import { formatMoney } from "@/lib/format";
+import { chart } from "@/theme/tokens";
 
-function CashTooltip({ active, payload }) {
+/**
+ * The hovered point.
+ *
+ * Money is the default because the cashflow card is where this chart started,
+ * but the shape is not money-specific — a caller counting people passes its
+ * own `label` and `format` rather than reading "EGP 12" off a patient count.
+ */
+function PointTooltip({ active, payload, label = "Total", format = formatMoney, valueKey }) {
   if (!active || !payload?.length) return null;
   const point = payload[0].payload;
+  const value = valueKey ? point[valueKey] : (point.total ?? payload[0].value);
   return (
-    <div className="rounded-xl bg-[#1E293B] px-3 py-2 text-white shadow-pop">
-      <div className="text-[10px] font-semibold uppercase tracking-wide text-white/60">Total:</div>
-      <div className="text-[13px] font-bold">{formatMoney(point.total)}</div>
+    <div className="rounded-xl bg-ink px-3 py-2 text-white shadow-pop">
+      <div className="text-[10px] font-semibold uppercase tracking-wide text-white/60">{label}:</div>
+      <div className="text-[13px] font-bold">{format(value)}</div>
     </div>
   );
 }
@@ -31,7 +40,9 @@ export function LineAreaChart({
   xKey = "month",
   yKey = "value",
   height = 220,
-  color = "#4B66E9",
+  color = chart.primary,
+  tooltipLabel,
+  valueFormatter,
 }) {
   const [activeX, setActiveX] = useState(null);
 
@@ -52,7 +63,7 @@ export function LineAreaChart({
           </defs>
           <CartesianGrid
             vertical={false}
-            stroke="#E2E8F0"
+            stroke={chart.grid}
             strokeDasharray="2 6"
             strokeWidth={1}
           />
@@ -63,7 +74,16 @@ export function LineAreaChart({
             width={48}
             tickFormatter={(value) => (value >= 1000 ? `${value / 1000}K` : value)}
           />
-          <Tooltip content={<CashTooltip />} cursor={false} />
+          <Tooltip
+            content={
+              <PointTooltip
+                label={tooltipLabel}
+                format={valueFormatter}
+                valueKey={valueFormatter ? yKey : undefined}
+              />
+            }
+            cursor={false}
+          />
           {activeX ? (
             <ReferenceLine x={activeX} stroke={color} strokeWidth={1.5} strokeOpacity={0.55} />
           ) : null}

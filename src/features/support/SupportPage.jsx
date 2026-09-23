@@ -66,7 +66,7 @@ export default function SupportPage() {
   }, [threads, active]);
 
   return (
-    <div className="flex flex-col gap-5 p-6">
+    <div className="flex flex-col gap-4 p-4 sm:gap-5 sm:p-6">
       <PageHeader
         title="Customer support"
         description="Conversations with the Odenta team, and the guides your role asks for most."

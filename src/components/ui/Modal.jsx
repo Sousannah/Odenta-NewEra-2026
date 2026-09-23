@@ -9,6 +9,8 @@ const WIDTHS = {
   md: "max-w-lg",
   lg: "max-w-2xl",
   xl: "max-w-4xl",
+  /* For a dialog that has to hold a whole record rather than a form. */
+  full: "max-w-[1200px]",
 };
 
 function useLockScroll(active) {
@@ -33,7 +35,7 @@ function useEscape(active, onClose) {
 
 /**
  * Centered dialog. `stacked` renders it slightly offset so a second dialog can
- * sit on top of the first one (the "stackable dialogs" pattern in Zendenta).
+ * sit on top of the first one (the "stackable dialogs" pattern).
  */
 export function Modal({
   open,
@@ -54,7 +56,7 @@ export function Modal({
   if (!open) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 sm:p-8">
+    <div className="fixed inset-0 z-[60] flex items-start justify-center overflow-y-auto p-3 sm:p-8">
       <div
         className={cn(
           "fixed inset-0 animate-fade-in bg-slate-900/40 backdrop-blur-[2px]",
@@ -74,9 +76,9 @@ export function Modal({
         )}
       >
         {title ? (
-          <header className="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5">
+          <header className="flex items-start justify-between gap-3 border-b border-slate-100 px-4 py-4 sm:gap-4 sm:px-6 sm:py-5">
             <div className="min-w-0">
-              <h2 className="text-lg font-bold text-ink">{title}</h2>
+              <h2 className="text-base font-bold text-ink sm:text-lg">{title}</h2>
               {description ? (
                 <p className="mt-1 text-sm text-ink-muted">{description}</p>
               ) : null}
@@ -96,12 +98,12 @@ export function Modal({
           </header>
         ) : null}
 
-        <div className={cn("max-h-[70vh] overflow-y-auto px-6 py-5", bodyClassName)}>
+        <div className={cn("max-h-[72vh] overflow-y-auto px-4 py-4 sm:px-6 sm:py-5", bodyClassName)}>
           {children}
         </div>
 
         {footer ? (
-          <footer className="flex items-center justify-end gap-3 border-t border-slate-100 px-6 py-4">
+          <footer className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-100 px-4 py-3.5 sm:gap-3 sm:px-6 sm:py-4">
             {footer}
           </footer>
         ) : null}
@@ -126,7 +128,7 @@ export function Drawer({
   if (!open) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-40 flex justify-end">
+    <div className="fixed inset-0 z-[60] flex justify-end">
       {overlay ? (
         <div
           className="absolute inset-0 animate-fade-in bg-slate-900/35"

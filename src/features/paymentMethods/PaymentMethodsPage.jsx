@@ -134,7 +134,7 @@ export default function PaymentMethodsPage() {
   };
 
   return (
-    <div className="flex flex-col gap-5 p-6">
+    <div className="flex flex-col gap-4 p-4 sm:gap-5 sm:p-6">
       <PageHeader
         title="Payment method"
         description="Decide how patients can settle their bills at the front desk."

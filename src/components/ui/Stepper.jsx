@@ -87,7 +87,7 @@ export function DotSteps({ total = 2, current = 1, className }) {
 }
 
 export function ProgressBar({ value = 0, className, tone = "brand" }) {
-  const tones = { brand: "bg-brand-600", success: "bg-success", warning: "bg-warning" };
+  const tones = { brand: "bg-brand-600", success: "bg-success", warning: "bg-warning", danger: "bg-danger" };
   return (
     <div className={cn("h-1.5 w-full overflow-hidden rounded-full bg-slate-200", className)}>
       <div

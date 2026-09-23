@@ -15,3 +15,20 @@ ReactDOM.createRoot(document.getElementById("root")).render(
     </ToastProvider>
   </React.StrictMode>
 );
+
+/**
+ * Retire the first-paint splash in `index.html`.
+ *
+ * It hands over to whichever loader the first route mounts — the same wordmark
+ * either way, so the crossfade is the boot screen becoming the app's own
+ * loader rather than a visible swap.
+ */
+const boot = document.getElementById("od-boot");
+if (boot) {
+  requestAnimationFrame(() => {
+    boot.classList.add("od-boot-out");
+    boot.addEventListener("transitionend", () => boot.remove(), { once: true });
+    /* Belt and braces: a tab that never runs the transition still loses it. */
+    setTimeout(() => boot.remove(), 600);
+  });
+}

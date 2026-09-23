@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { CheckCircle2, ClipboardList, FileSignature } from "lucide-react";
+import { CheckCircle2, ClipboardList, Coins, FileSignature } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useAsync } from "@/hooks";
 import { useToast } from "@/components/ui/Toast";
@@ -17,8 +17,9 @@ import { ProgressBar } from "@/components/ui/Stepper";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { SearchInput } from "@/components/ui/Misc";
-import { PageHeader, StatCard, Toolbar, toneFor } from "@/components/shared";
+import { PageHeader, StatCard, StatGrid, Toolbar, toneFor } from "@/components/shared";
 import { formatTeeth } from "@/components/dental";
+import { app } from "@/config/paths";
 
 /**
  * Treatment plans across the whole practice.
@@ -71,13 +72,13 @@ export default function TreatmentPlansPage() {
   const totalValue = plans.reduce((sum, plan) => sum + plan.estimatedCost, 0);
 
   return (
-    <div className="flex flex-col gap-5 p-6">
+    <div className="flex flex-col gap-4 p-4 sm:gap-5 sm:p-6">
       <PageHeader
         title="Treatment plans"
         description="Every multi-visit commitment, its consent status and where it has got to."
       />
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <StatGrid cols={3}>
         <StatCard
           label="Active plans"
           value={counts.in_progress ?? 0}
@@ -89,8 +90,11 @@ export default function TreatmentPlansPage() {
           tone="warning"
           icon={<FileSignature className="h-5 w-5" />}
         />
-        <StatCard label="Planned value" value={formatMoney(totalValue)} tone="success" />
-      </div>
+        <StatCard
+          label="Planned value" value={formatMoney(totalValue)} tone="success"
+          icon={<Coins className="h-5 w-5" />}
+        />
+      </StatGrid>
 
       <Tabs value={status} onValueChange={setStatus}>
         <TabsList>
@@ -116,7 +120,7 @@ export default function TreatmentPlansPage() {
                 value={query}
                 onChange={setQuery}
                 placeholder="Search plan or patient…"
-                className="w-[300px]"
+                className="w-full sm:w-[300px]"
               />
             }
           />
@@ -183,7 +187,7 @@ export default function TreatmentPlansPage() {
                         <span
                           className={cn(
                             "flex items-center gap-2 text-[12.5px] font-bold",
-                            plan.consentSigned ? "text-success-strong" : "text-[#8C6103]"
+                            plan.consentSigned ? "text-success-strong" : "text-warning-ink"
                           )}
                         >
                           {plan.consentSigned ? (
@@ -209,7 +213,7 @@ export default function TreatmentPlansPage() {
 
                       <Button
                         variant="secondary"
-                        onClick={() => navigate(`/patients/${plan.patientId}`)}
+                        onClick={() => navigate(app.patient(plan.patientId))}
                       >
                         Open patient record
                       </Button>

@@ -13,7 +13,7 @@ import { differenceInCalendarDays } from "date-fns";
 import { cn } from "@/lib/cn";
 import { useAsync, useDisclosure } from "@/hooks";
 import { useToast } from "@/components/ui/Toast";
-import { inventoryService } from "@/services";
+import { assistantService, inventoryService } from "@/services";
 import { formatDate, formatMoney, formatNumber } from "@/lib/format";
 import { STOCK_STATUSES } from "@/config/domain";
 import { P } from "@/auth/permissions";
@@ -29,6 +29,7 @@ import { ProgressBar } from "@/components/ui/Stepper";
 import { Card } from "@/components/ui/Card";
 import { SegmentBar } from "@/components/charts";
 import { StatBlock, Toolbar, toneFor } from "@/components/shared";
+import { accent, semantic } from "@/theme/tokens";
 
 const CATEGORIES = [
   "Consumable",
@@ -112,7 +113,7 @@ function StockFormModal({ open, onClose, onSaved }) {
 }
 
 /** Chairside consumption — the assistant records what a case used. */
-function ConsumeModal({ open, onClose, stock, onSaved }) {
+function ConsumeModal({ open, onClose, stock, onSaved, appointmentId = null, patientId = null }) {
   const [quantity, setQuantity] = useState(1);
   const toast = useToast();
 
@@ -134,10 +135,39 @@ function ConsumeModal({ open, onClose, stock, onSaved }) {
             className="min-w-[130px]"
             disabled={quantity < 1 || quantity > stock.quantity}
             onClick={async () => {
-              await inventoryService.consumeStock(stock.id, quantity, stock.quantity);
-              toast.success("Usage recorded", `${quantity} ${stock.unit} of ${stock.name}`);
-              onSaved?.();
-              onClose();
+              try {
+                /**
+                 * The relative endpoint, not a PATCH of the absolute quantity.
+                 *
+                 * This used to send `quantity: onHand - used`, computed from the
+                 * count the screen was showing. Two assistants consuming from
+                 * the same box in the same second each wrote an absolute figure
+                 * derived from the same stale read, so one of the two
+                 * consumptions silently vanished — and the shelf then disagreed
+                 * with the shelf. The server applies a delta with an atomic
+                 * increment instead, so both land.
+                 */
+                const outcome = await assistantService.consumeStock(stock.id, quantity, {
+                  appointmentId: appointmentId ?? null,
+                  patientId: patientId ?? null,
+                });
+
+                /* Not an error: the physical act already happened at the chair,
+                   so taking three when five were asked for is reported rather
+                   than refused. */
+                if (outcome?.shortfall > 0) {
+                  toast.info(
+                    `Only ${outcome.consumed} ${stock.unit} were available`,
+                    `${outcome.shortfall} short — ${stock.name} is now ${outcome.status?.toLowerCase()}`
+                  );
+                } else {
+                  toast.success("Usage recorded", `${outcome?.consumed ?? quantity} ${stock.unit} of ${stock.name}`);
+                }
+                onSaved?.();
+                onClose();
+              } catch (cause) {
+                toast.error("Could not record usage", cause.message);
+              }
             }}
           >
             Record usage
@@ -195,6 +225,36 @@ export default function StocksPage() {
     []
   );
 
+  /**
+   * The totals, from the server rather than from the rows on screen.
+   *
+   * These four numbers used to be `stocks.reduce(...)` and
+   * `stocks.filter(...).length` over the fetched array. That was merely
+   * expensive while the endpoint returned the whole shelf; now that it is
+   * continuation-paged it is **wrong** — a practice with more lines than one
+   * page would see a valuation and three segment counts that silently describe
+   * the first fifty rows and nothing else.
+   *
+   * A total must never be the length of a page. The server keeps these on one
+   * small document its writes maintain, so this is a point read that is flat in
+   * the size of the shelf.
+   */
+  const { data: summary, refetch: refetchSummary } = useAsync(
+    () => assistantService.getStockSummary(),
+    [],
+    null
+  );
+
+  /**
+   * What to order, and what is about to expire — also folded server-side.
+   *
+   * The expiry list in particular could not be right on the client: an item
+   * expiring next month is not *low*, so it never appeared on a page filtered
+   * by status, and the old `stocks.filter(expiry <= 60d)` only ever saw
+   * whatever page happened to be loaded.
+   */
+  const { data: reorder } = useAsync(() => assistantService.getReorderList(), [], null);
+
   const closeForm = () => {
     form.close();
     if (params.get("new")) {
@@ -203,16 +263,25 @@ export default function StocksPage() {
     }
   };
 
-  const totalAsset = stocks.reduce((sum, item) => sum + item.assetValue, 0);
+  const totalAsset = summary?.stockValue ?? 0;
+  const lineCount = summary?.lineCount ?? stocks.length;
+  const inStockCount = Math.max(
+    0,
+    lineCount - (summary?.stockLowCount ?? 0) - (summary?.stockOutCount ?? 0)
+  );
+
   const segments = [
-    { name: "In stock", value: stocks.filter((s) => s.status === "IN STOCK").length, color: "#13CACA" },
-    { name: "Low stock", value: stocks.filter((s) => s.status === "LOW STOCK").length, color: "#FCB900" },
-    { name: "Out of stock", value: stocks.filter((s) => s.status === "OUT OF STOCK").length, color: "#FE3D75" },
+    { name: "In stock", value: inStockCount, color: accent[500] },
+    { name: "Low stock", value: summary?.stockLowCount ?? 0, color: semantic.warning },
+    { name: "Out of stock", value: summary?.stockOutCount ?? 0, color: semantic.danger },
   ];
 
-  const expiringSoon = stocks.filter(
-    (item) => item.expiry && differenceInCalendarDays(new Date(item.expiry), new Date()) <= 60
-  );
+  const expiringSoon = reorder?.expiring ?? [];
+
+  const reloadAll = () => {
+    refetch();
+    refetchSummary();
+  };
 
   const inventoryColumns = [
     {
@@ -356,7 +425,7 @@ export default function StocksPage() {
         <span className="hidden h-12 w-px bg-slate-200 sm:block" />
         <div className="min-w-[280px] flex-1">
           <div className="flex items-baseline gap-2">
-            <span className="text-[22px] font-extrabold text-ink">{stocks.length}</span>
+            <span className="text-[22px] font-extrabold text-ink">{lineCount}</span>
             <span className="text-[13px] text-ink-soft">product</span>
           </div>
           <SegmentBar segments={segments} className="mt-3" />
@@ -374,7 +443,7 @@ export default function StocksPage() {
       {expiringSoon.length ? (
         <div className="flex items-center gap-3 rounded-2xl bg-warning-soft px-4 py-3">
           <AlertTriangle className="h-4 w-4 shrink-0 text-warning" />
-          <span className="text-[13px] font-semibold text-[#8C6103]">
+          <span className="text-[13px] font-semibold text-warning-ink">
             {expiringSoon.length} item(s) expire within 60 days:{" "}
             {expiringSoon.map((item) => item.name).join(", ")}
           </span>
@@ -383,7 +452,7 @@ export default function StocksPage() {
 
       <Tabs defaultValue="inventory">
         <TabsList>
-          <TabsTrigger value="inventory" badge={stocks.length}>
+          <TabsTrigger value="inventory" badge={lineCount}>
             Inventory
           </TabsTrigger>
           <TabsTrigger value="orders" badge={orders.length}>
@@ -400,7 +469,7 @@ export default function StocksPage() {
                   value={query}
                   onChange={setQuery}
                   placeholder="Search name, SKU or vendor…"
-                  className="w-[300px]"
+                  className="w-full sm:w-[300px]"
                 />
                 <MiniSelect
                   className="h-10"
@@ -494,12 +563,12 @@ export default function StocksPage() {
         </TabsContent>
       </Tabs>
 
-      <StockFormModal open={form.isOpen} onClose={closeForm} onSaved={refetch} />
+      <StockFormModal open={form.isOpen} onClose={closeForm} onSaved={reloadAll} />
       <ConsumeModal
         open={consume.isOpen}
         onClose={consume.close}
         stock={consuming}
-        onSaved={refetch}
+        onSaved={reloadAll}
       />
     </div>
   );

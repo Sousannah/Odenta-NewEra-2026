@@ -16,7 +16,7 @@ const depthTone = (value) => {
   if (value == null || value === "") return "text-ink-faint";
   const depth = Number(value);
   if (depth >= 6) return "text-danger font-bold";
-  if (depth >= 4) return "text-[#B27B04] font-bold";
+  if (depth >= 4) return "text-warning-ink font-bold";
   return "text-ink";
 };
 
@@ -203,7 +203,7 @@ export function PerioChart({
               className={cn(
                 "mt-1 text-[18px] font-extrabold",
                 item.tone === "danger" && "text-danger",
-                item.tone === "warning" && "text-[#B27B04]",
+                item.tone === "warning" && "text-warning-ink",
                 item.tone === "ink" && "text-ink"
               )}
             >

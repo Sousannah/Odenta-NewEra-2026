@@ -1,33 +1,18 @@
-import { useMemo, useState } from "react";
-import { Camera, ClipboardPlus, Landmark, Stethoscope, Trash2 } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
+import { Camera, ClipboardPlus, Landmark, Stethoscope } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useToast } from "@/components/ui/Toast";
 import { formatDate } from "@/lib/format";
 import { PLAN_DECLINE_REASONS, TOOTH_DECLINE_REASONS } from "@/config/domain";
-import {
-  ASA_CLASSES,
-  ICDAS_CODES,
-  PROCEDURE_CODES,
-  TOOTH_CONDITIONS,
-  conditionByValue,
-} from "@/config/dentalStandards";
+import { ASA_CLASSES, conditionByValue } from "@/config/dentalStandards";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { DotSteps, Stepper } from "@/components/ui/Stepper";
 import { Field, Input, Radio, Select, Textarea } from "@/components/ui/Field";
 import { InfoBanner } from "@/components/ui/Misc";
 import { Badge } from "@/components/ui/Badge";
-import {
-  DEFAULT_LEGEND,
-  Odontogram,
-  OdontogramLegend,
-  formatSurfaces,
-  surfaceLabel,
-  surfacesFor,
-  toothFullName,
-  toothName,
-} from "@/components/dental";
-import { chartToFindings } from "./DetailPanels";
+import { formatSurfaces, toothFullName, toothName } from "@/components/dental";
+import { ToothChart, toClinicEntries } from "@/odontogram";
 
 const STEPS = [
   { id: 1, label: "Medical data", icon: <ClipboardPlus className="h-5 w-5" /> },
@@ -35,127 +20,6 @@ const STEPS = [
   { id: 3, label: "Oral Check", icon: <Stethoscope className="h-5 w-5" /> },
   { id: 4, label: "Plan Agreement", icon: <Landmark className="h-5 w-5" /> },
 ];
-
-/* -------------------------------------------------------- tooth popover */
-
-function ToothPopover({ tooth, entry, onChange, onDelete, onSave }) {
-  const surfaces = surfacesFor(tooth);
-  const condition = conditionByValue(entry?.condition);
-  const selected = entry?.surfaces ?? [];
-
-  const toggleSurface = (code) =>
-    onChange({
-      surfaces: selected.includes(code)
-        ? selected.filter((item) => item !== code)
-        : [...selected, code],
-    });
-
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-pop">
-      <div className="flex items-center justify-between gap-2">
-        <span className="min-w-0">
-          <span className="block truncate text-[13.5px] font-bold text-ink">{toothName(tooth)}</span>
-          <span className="block truncate text-[10.5px] text-ink-soft">{toothFullName(tooth)}</span>
-        </span>
-        <span className="flex shrink-0 items-center gap-1.5 rounded-md bg-brand-50 px-2 py-1 text-[11px] font-bold text-brand-700">
-          <svg viewBox="0 0 12 14" className="h-3 w-3 fill-current" aria-hidden="true">
-            <path d="M6 0C7 0 7.5.5 9 .5c1.6 0 2.5 1.2 2.5 2.9 0 1.8-.7 2.8-1.1 4.4C10 9.3 9.8 13 8.4 13c-1.2 0-1.1-2.8-2.4-2.8S4.7 13 3.6 13C2.2 13 2 9.3 1.6 7.8 1.2 6.2.5 5.2.5 3.4.5 1.7 1.4.5 3 .5 4.5.5 5 0 6 0Z" />
-          </svg>
-          {tooth}
-        </span>
-      </div>
-
-      <div className="mt-2.5 flex flex-col gap-2">
-        <Select
-          className="h-9 text-[13px]"
-          value={entry?.condition ?? ""}
-          onChange={(event) => onChange({ condition: event.target.value })}
-        >
-          <option value="">Select condition</option>
-          {TOOTH_CONDITIONS.map((item) => (
-            <option key={item.value} value={item.value}>
-              {item.short} · {item.label}
-            </option>
-          ))}
-        </Select>
-
-        {condition?.surface ? (
-          <div>
-            <span className="od-label">Surfaces</span>
-            <div className="mt-1.5 flex flex-wrap gap-1.5">
-              {surfaces.map((code) => (
-                <button
-                  key={code}
-                  type="button"
-                  title={surfaceLabel(code)}
-                  onClick={() => toggleSurface(code)}
-                  className={cn(
-                    "h-7 w-8 rounded-lg border text-[11px] font-bold transition",
-                    selected.includes(code)
-                      ? "border-brand-600 bg-brand-600 text-white"
-                      : "border-slate-200 bg-white text-ink-muted hover:border-brand-300"
-                  )}
-                >
-                  {code}
-                </button>
-              ))}
-            </div>
-          </div>
-        ) : null}
-
-        {entry?.condition === "caries" ? (
-          <Select
-            className="h-9 text-[13px]"
-            value={entry?.icdas ?? ""}
-            onChange={(event) => onChange({ icdas: event.target.value })}
-          >
-            <option value="">ICDAS severity</option>
-            {ICDAS_CODES.map((item) => (
-              <option key={item.code} value={item.code}>
-                {item.code} · {item.label}
-              </option>
-            ))}
-          </Select>
-        ) : null}
-
-        <Select
-          className="h-9 text-[13px]"
-          value={entry?.code ?? ""}
-          onChange={(event) => onChange({ code: event.target.value })}
-        >
-          <option value="">Planned procedure</option>
-          {PROCEDURE_CODES.map((item) => (
-            <option key={item.code} value={item.code}>
-              {item.code} · {item.label}
-            </option>
-          ))}
-        </Select>
-
-        <Textarea
-          rows={2}
-          className="text-[13px]"
-          placeholder="Add a clinical note…"
-          value={entry?.note ?? ""}
-          onChange={(event) => onChange({ note: event.target.value })}
-        />
-      </div>
-
-      <div className="mt-2.5 flex items-center gap-2">
-        <button
-          type="button"
-          aria-label="Remove finding"
-          onClick={onDelete}
-          className="flex h-9 w-9 items-center justify-center rounded-xl text-danger transition hover:bg-danger-soft"
-        >
-          <Trash2 className="h-4 w-4" />
-        </button>
-        <Button variant="secondary" size="sm" block onClick={onSave} className="text-brand-600">
-          Save
-        </Button>
-      </div>
-    </div>
-  );
-}
 
 /* ------------------------------------------------------------- step one */
 
@@ -233,33 +97,22 @@ function StepMedicalData({ patient, form, update }) {
 
 /* ------------------------------------------------- step two / three chart */
 
-function StepChart({ title, subtitle, findings, setFindings, baseFindings, substep }) {
-  const merged = useMemo(() => {
-    const result = { ...baseFindings };
-    Object.entries(findings).forEach(([tooth, entry]) => {
-      const surfaces = {};
-      (entry.surfaces ?? []).forEach((surface) => {
-        surfaces[surface] = "danger";
-      });
-      result[tooth] = { tone: "danger", surfaces };
-    });
-    return result;
-  }, [baseFindings, findings]);
-
-  const updateTooth = (tooth, patch) =>
-    setFindings((prev) => ({
-      ...prev,
-      [tooth]: { condition: "", surfaces: [], code: "", note: "", ...prev[tooth], ...patch },
-    }));
-
-  const removeTooth = (tooth) =>
-    setFindings((prev) => {
-      const next = { ...prev };
-      delete next[tooth];
-      return next;
-    });
-
-  const entries = Object.entries(findings);
+/**
+ * A charting step.
+ *
+ * The same tooth chart as the patient record, chairside: the clinician marks
+ * what they find on the chart itself rather than through a popover of their
+ * own, and the step keeps the chart's payload. What the agreement step needs —
+ * one condition per tooth — is derived from that payload rather than collected
+ * separately, so the two can never disagree.
+ *
+ * Each step seeds from the patient's existing chart, so a clinician marks
+ * today's findings on top of what is already on the record instead of a blank
+ * mouth.
+ */
+function StepChart({ title, subtitle, payload, setPayload, basePayload, substep }) {
+  const chartRef = useRef(null);
+  const entries = useMemo(() => (payload ? toClinicEntries(payload) : []), [payload]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -270,58 +123,32 @@ function StepChart({ title, subtitle, findings, setFindings, baseFindings, subst
         <p className="mt-0.5 text-[13px] text-ink-muted">{subtitle}</p>
       </div>
 
-      <div className="mx-auto w-full max-w-[540px]">
-        <Odontogram
-          findings={merged}
-          surfaceMode
-          onSelectTooth={(tooth) => {
-            if (!findings[tooth]) updateTooth(tooth, {});
-          }}
-          onSelectSurface={(tooth, surface) => {
-            const current = findings[tooth]?.surfaces ?? [];
-            updateTooth(tooth, {
-              surfaces: current.includes(surface) ? current : [...current, surface],
-            });
-          }}
-          renderPopover={(tooth, close) => (
-            <ToothPopover
-              tooth={tooth}
-              entry={findings[tooth]}
-              onChange={(patch) => updateTooth(tooth, patch)}
-              onDelete={() => {
-                removeTooth(tooth);
-                close();
-              }}
-              onSave={close}
-            />
-          )}
-          legend={<OdontogramLegend items={DEFAULT_LEGEND} />}
-        />
-      </div>
+      <ToothChart
+        ref={chartRef}
+        value={payload ?? basePayload}
+        onChange={setPayload}
+        enableNotes
+        enableIcdas
+        panelMaxHeight="46vh"
+      />
 
       {entries.length ? (
         <ul className="flex flex-col gap-2">
-          {entries.map(([tooth, entry]) => (
+          {entries.map((entry) => (
             <li
-              key={tooth}
+              key={entry.id}
               className="flex items-center gap-3 rounded-xl border border-slate-200 px-3.5 py-2.5"
             >
               <span className="flex h-7 min-w-[34px] items-center justify-center rounded-lg bg-slate-100 text-[12px] font-bold text-ink">
-                {tooth}
+                {entry.tooth}
               </span>
               <span className="min-w-0 flex-1 text-[13px] text-ink">
-                {conditionByValue(entry.condition)?.label ?? "No condition set"}
+                {conditionByValue(entry.condition)?.label ?? entry.condition}
                 {entry.surfaces?.length ? ` · ${formatSurfaces(entry.surfaces)}` : ""}
-                {entry.code ? ` · ${entry.code}` : ""}
               </span>
-              <button
-                type="button"
-                onClick={() => removeTooth(tooth)}
-                aria-label={`Remove tooth ${tooth}`}
-                className="rounded-lg p-1.5 text-ink-faint transition hover:bg-danger-soft hover:text-danger"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
+              <Badge tone={entry.status === "completed" ? "success" : "warning"}>
+                {entry.status}
+              </Badge>
             </li>
           ))}
         </ul>
@@ -329,6 +156,7 @@ function StepChart({ title, subtitle, findings, setFindings, baseFindings, subst
     </div>
   );
 }
+
 
 /* ----------------------------------------------------------- step four */
 
@@ -395,7 +223,9 @@ function StepAgreement({ findings, agreement, setAgreement }) {
                       {condition?.short ?? "—"}
                     </span>{" "}
                     {condition?.label ?? "Not set"}
-                    {findings[tooth].code ? ` · ${findings[tooth].code}` : ""}
+                    {findings[tooth].surfaces?.length
+                      ? ` · ${formatSurfaces(findings[tooth].surfaces)}`
+                      : ""}
                   </div>
                 </div>
 
@@ -468,7 +298,14 @@ function StepAgreement({ findings, agreement, setAgreement }) {
 
 /* ------------------------------------------------------------------ modal */
 
-export function MedicalCheckupModal({ open, onClose, appointment, patient, chart = [], onSaved }) {
+export function MedicalCheckupModal({
+  open,
+  onClose,
+  appointment,
+  patient,
+  odontogram = null,
+  onSaved,
+}) {
   const [step, setStep] = useState(1);
   const [medical, setMedical] = useState({
     asa: patient?.asa ?? "I",
@@ -476,15 +313,31 @@ export function MedicalCheckupModal({ open, onClose, appointment, patient, chart
     complaint: appointment?.note ?? "",
     anaesthetic: "",
   });
-  const [findings, setFindings] = useState({});
-  const [cosmetic, setCosmetic] = useState({});
+  /* Two charts, one per service. Both start from the patient's existing chart
+     and are kept as the odontogram's own payloads. */
+  const [medicalChart, setMedicalChart] = useState(null);
+  const [cosmeticChart, setCosmeticChart] = useState(null);
   const [agreement, setAgreement] = useState({ planReason: "", planNote: "", teeth: {} });
   const toast = useToast();
 
-  const baseFindings = useMemo(() => chartToFindings(chart), [chart]);
+  /* What the agreement step signs off on: one condition per tooth, derived
+     from the medical chart rather than collected a second time. */
+  const findings = useMemo(() => {
+    if (!medicalChart) return {};
+    return toClinicEntries(medicalChart).reduce((acc, entry) => {
+      acc[entry.tooth] ??= entry;
+      return acc;
+    }, {});
+  }, [medicalChart]);
 
   const save = () => {
-    onSaved?.({ medical, findings, cosmetic, agreement });
+    onSaved?.({
+      medical,
+      findings,
+      odontogram: medicalChart,
+      cosmeticOdontogram: cosmeticChart,
+      agreement,
+    });
     toast.success("Medical checkup saved successfully", "You can also edit medical checkups");
     onClose();
   };
@@ -520,14 +373,16 @@ export function MedicalCheckupModal({ open, onClose, appointment, patient, chart
         />
       ) : null}
 
+      {/* One chart at a time: the charting engine is a singleton, so the two
+          steps are mutually exclusive rather than mounted together and hidden. */}
       {step === 2 ? (
         <StepChart
           substep={1}
           title="Medical service"
-          subtitle="Select a problem tooth, then a surface"
-          findings={findings}
-          setFindings={setFindings}
-          baseFindings={baseFindings}
+          subtitle="Chart what you find — tooth, surface and root"
+          payload={medicalChart}
+          setPayload={setMedicalChart}
+          basePayload={odontogram}
         />
       ) : null}
 
@@ -535,10 +390,10 @@ export function MedicalCheckupModal({ open, onClose, appointment, patient, chart
         <StepChart
           substep={2}
           title="Cosmetic service"
-          subtitle="Select the teeth included in the oral check"
-          findings={cosmetic}
-          setFindings={setCosmetic}
-          baseFindings={baseFindings}
+          subtitle="Chart the teeth included in the cosmetic plan"
+          payload={cosmeticChart}
+          setPayload={setCosmeticChart}
+          basePayload={odontogram}
         />
       ) : null}
 

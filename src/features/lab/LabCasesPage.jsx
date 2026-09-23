@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { differenceInCalendarDays } from "date-fns";
-import { FlaskConical, Plus } from "lucide-react";
+import { AlarmClock, FlaskConical, Plus, RefreshCcw } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useAsync, useDisclosure } from "@/hooks";
 import { useToast } from "@/components/ui/Toast";
@@ -17,8 +17,9 @@ import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
 import { Field, Input, MiniSelect, Select, Textarea } from "@/components/ui/Field";
 import { SearchInput } from "@/components/ui/Misc";
-import { PageHeader, StatCard, Toolbar } from "@/components/shared";
+import { PageHeader, StatCard, StatGrid, Toolbar } from "@/components/shared";
 import { formatTeeth } from "@/components/dental";
+import { app } from "@/config/paths";
 
 const STAGE_ORDER = ["impression", "sent", "in_production", "try_in", "returned", "fitted"];
 
@@ -150,9 +151,21 @@ export default function LabCasesPage() {
     refetch();
   };
 
-  const overdue = cases.filter(
-    (item) => item.stage !== "fitted" && differenceInCalendarDays(new Date(item.dueAt), new Date()) < 0
-  );
+  /**
+   * The three tiles, from the server.
+   *
+   * They were `cases.filter(...).length` over the fetched array. That was
+   * merely expensive while the endpoint returned every case; it became *wrong*
+   * once the endpoint was continuation-paged, because a practice with more than
+   * a page of lab work would see tiles describing the first fifty rows and
+   * presenting them as the practice's totals. It fails in the direction of
+   * looking entirely plausible, which is the worst kind.
+   *
+   * `/lab/cases/stages` is two single-partition aggregates. It is also
+   * unaffected by the stage tab and the search box, so it is fetched once
+   * rather than on every keystroke.
+   */
+  const { data: stageCounts = {} } = useAsync(() => labService.getLabStageCounts(), [], {});
 
   const columns = [
     { key: "id", header: "Case", sortable: true, render: (row) => <b>#{row.id}</b> },
@@ -165,7 +178,7 @@ export default function LabCasesPage() {
           type="button"
           onClick={(event) => {
             event.stopPropagation();
-            navigate(`/patients/${row.patientId}`);
+            navigate(app.patient(row.patientId));
           }}
           className="text-[13.5px] font-semibold text-brand-700 hover:underline"
         >
@@ -245,7 +258,7 @@ export default function LabCasesPage() {
   ];
 
   return (
-    <div className="flex flex-col gap-5 p-6">
+    <div className="flex flex-col gap-4 p-4 sm:gap-5 sm:p-6">
       <PageHeader
         title="Lab cases"
         description="Prosthetic work orders from impression through to fit."
@@ -258,19 +271,21 @@ export default function LabCasesPage() {
         }
       />
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <StatGrid cols={3}>
         <StatCard
           label="Open cases"
-          value={cases.filter((item) => item.stage !== "fitted").length}
+          value={stageCounts.open ?? 0}
           icon={<FlaskConical className="h-5 w-5" />}
         />
-        <StatCard label="Overdue" value={overdue.length} tone="danger" />
         <StatCard
-          label="Remakes"
-          value={cases.filter((item) => item.stage === "remake").length}
-          tone="warning"
+          label="Overdue" value={stageCounts.overdue ?? 0} tone="danger"
+          icon={<AlarmClock className="h-5 w-5" />}
         />
-      </div>
+        <StatCard
+          label="Remakes" value={stageCounts.remake ?? 0} tone="warning"
+          icon={<RefreshCcw className="h-5 w-5" />}
+        />
+      </StatGrid>
 
       <Tabs value={stage} onValueChange={setStage}>
         <TabsList>
@@ -290,7 +305,7 @@ export default function LabCasesPage() {
                 value={query}
                 onChange={setQuery}
                 placeholder="Search case, patient or lab…"
-                className="w-[320px]"
+                className="w-full sm:w-[320px]"
               />
             }
             right={

@@ -1,4 +1,5 @@
 import {
+  CalendarClock,
   CheckCircle2,
   CircleDollarSign,
   CircleSlash,
@@ -21,7 +22,7 @@ export function appointmentAppearance(appointment) {
     case "finished":
       return unpaid
         ? {
-            card: "bg-[#FDECF2] border-l-[3px] border-danger",
+            card: "bg-danger-soft border-l-[3px] border-danger",
             badge: "bg-danger text-white",
             chipTone: "success",
             icon: CircleDollarSign,
@@ -36,7 +37,7 @@ export function appointmentAppearance(appointment) {
           };
     case "encounter":
       return {
-        card: "bg-[#E4EDFB] border-l-[3px] border-brand-500",
+        card: "bg-brand-50 border-l-[3px] border-brand-500",
         badge: "bg-brand-600 text-white",
         chipTone: "warning",
         icon: UserRound,
@@ -44,7 +45,7 @@ export function appointmentAppearance(appointment) {
       };
     case "arrived":
       return {
-        card: "bg-[#EAF1FE] border-l-[3px] border-brand-400",
+        card: "bg-brand-50/70 border-l-[3px] border-brand-400",
         badge: "bg-brand-500 text-white",
         chipTone: "brand",
         icon: LogIn,
@@ -66,6 +67,16 @@ export function appointmentAppearance(appointment) {
         icon: XCircle,
         pill: "bg-white border-slate-200",
       };
+    /* Dimmed rather than struck through: the visit is still expected, just
+       not on this line of the board. */
+    case "postponed":
+      return {
+        card: "bg-info-soft/60 od-hatch-slate border-l-[3px] border-info",
+        badge: "bg-info text-white",
+        chipTone: "info",
+        icon: CalendarClock,
+        pill: "bg-white border-info/25",
+      };
     case "no_show":
       return {
         card: "bg-slate-50 od-hatch-slate border-l-[3px] border-slate-300",
@@ -76,7 +87,7 @@ export function appointmentAppearance(appointment) {
       };
     default:
       return {
-        card: "bg-[#EEF2F9] border-l-[3px] border-slate-400",
+        card: "bg-slate-100 border-l-[3px] border-slate-400",
         badge: "bg-slate-500 text-white",
         chipTone: "info",
         icon: UserRound,
@@ -92,6 +103,7 @@ export const STATUS_OPTIONS = [
   { value: "waiting", label: "Waiting Payment", dot: "bg-warning" },
   { value: "finished", label: "Finished", dot: "bg-success" },
   { value: "cancelled", label: "Cancelled", dot: "bg-danger" },
+  { value: "postponed", label: "Postponed", dot: "bg-info" },
   { value: "no_show", label: "No show", dot: "bg-slate-300" },
 ];
 

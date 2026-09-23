@@ -24,14 +24,28 @@ export function Field({ label, hint, error, required, className, children, count
   );
 }
 
-export function Input({ className, leftIcon, ...props }) {
-  if (leftIcon) {
+/**
+ * `rightSlot` is interactive — a reveal toggle, a unit, a clear button — so
+ * unlike `leftIcon` it keeps its pointer events and sits above the input.
+ */
+export function Input({ className, leftIcon, rightSlot, ...props }) {
+  if (leftIcon || rightSlot) {
     return (
       <span className="relative block">
-        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-soft">
-          {leftIcon}
-        </span>
-        <input className={cn(CONTROL, "h-11 pl-9", className)} {...props} />
+        {leftIcon ? (
+          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-soft">
+            {leftIcon}
+          </span>
+        ) : null}
+        <input
+          className={cn(CONTROL, "h-11", leftIcon && "pl-9", rightSlot && "pr-11", className)}
+          {...props}
+        />
+        {rightSlot ? (
+          <span className="absolute right-1.5 top-1/2 flex -translate-y-1/2 items-center">
+            {rightSlot}
+          </span>
+        ) : null}
       </span>
     );
   }

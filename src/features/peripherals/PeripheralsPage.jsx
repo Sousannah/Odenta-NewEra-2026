@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { differenceInCalendarDays } from "date-fns";
-import { CalendarClock, LayoutGrid, List, Plus, Wrench } from "lucide-react";
+import { CalendarClock, LayoutGrid, List, PlugZap, Plus, Wrench } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useAsync, useDisclosure } from "@/hooks";
 import { useToast } from "@/components/ui/Toast";
@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/Badge";
 import { SearchInput } from "@/components/ui/Misc";
 import { Field, Input, MiniSelect, Select, Textarea } from "@/components/ui/Field";
 import { Modal } from "@/components/ui/Modal";
-import { PageHeader, StatCard, Toolbar, toneFor } from "@/components/shared";
+import { PageHeader, StatCard, StatGrid, Toolbar, toneFor } from "@/components/shared";
 
 const STATUSES = ["Used", "Not Used", "Draft"];
 
@@ -223,7 +223,7 @@ export default function PeripheralsPage() {
   ];
 
   return (
-    <div className="flex flex-col gap-5 p-6">
+    <div className="flex flex-col gap-4 p-4 sm:gap-5 sm:p-6">
       <PageHeader
         title="Peripherals"
         description="Every chair, scanner and sterilizer the clinic owns, with its service schedule."
@@ -236,16 +236,15 @@ export default function PeripheralsPage() {
         }
       />
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <StatGrid cols={3}>
         <StatCard
           label="Total asset value"
           value={formatMoney(totalValue)}
           icon={<Wrench className="h-5 w-5" />}
         />
         <StatCard
-          label="In use"
-          value={peripherals.filter((item) => item.status === "Used").length}
-          tone="success"
+          label="In use" value={peripherals.filter((item) => item.status === "Used").length} tone="success"
+          icon={<PlugZap className="h-5 w-5" />}
         />
         <StatCard
           label="Service due soon"
@@ -253,7 +252,7 @@ export default function PeripheralsPage() {
           tone="warning"
           icon={<CalendarClock className="h-5 w-5" />}
         />
-      </div>
+      </StatGrid>
 
       <Toolbar
         left={
@@ -262,7 +261,7 @@ export default function PeripheralsPage() {
               value={query}
               onChange={setQuery}
               placeholder="Search equipment…"
-              className="w-[300px]"
+              className="w-full sm:w-[300px]"
             />
             <MiniSelect
               className="h-10"

@@ -3,11 +3,11 @@ import { endpoints } from "@/api/endpoints";
 
 export const getStocks = (params) => api.get(endpoints.inventory.stocks, params);
 export const updateStock = (id, body) =>
-  api.patch(endpoints.inventory.stocks + "/" + id, body);
+  api.patch(endpoints.inventory.stock(id), body);
 
 /** Chairside consumption — decrements the on-hand count. */
 export const consumeStock = (id, quantity, onHand) =>
-  api.patch(endpoints.inventory.stocks + "/" + id, {
+  api.patch(endpoints.inventory.stock(id), {
     quantity: Math.max(onHand - quantity, 0),
   });
 

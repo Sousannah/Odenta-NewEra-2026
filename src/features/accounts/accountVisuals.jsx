@@ -12,6 +12,7 @@ import {
   Wrench,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { accent, brand, ink, semantic } from "@/theme/tokens";
 
 /** Icon + colour vocabulary for account pockets, shared by cards and pickers. */
 export const ACCOUNT_ICON_COMPONENTS = {
@@ -30,16 +31,16 @@ export const ACCOUNT_ICON_COMPONENTS = {
 };
 
 export const ACCOUNT_COLOR_HEX = {
-  slate: "#64748B",
-  blue: "#3EA0F1",
-  rose: "#E45689",
+  slate: ink.muted,
+  blue: brand[600],
+  rose: semantic.danger,
   coral: "#EF6F5C",
-  amber: "#FCB900",
-  green: "#7DD07D",
-  teal: "#3ECFB6",
-  violet: "#7C5CFC",
+  amber: semantic.warning,
+  green: semantic.success,
+  teal: accent[500],
+  violet: "#7C6BF5",
   pink: "#E879F9",
-  grey: "#94A3B8",
+  grey: ink.soft,
 };
 
 export function AccountIcon({ icon = "cash", color = "pink", size = "md", muted = false }) {
@@ -50,7 +51,7 @@ export function AccountIcon({ icon = "cash", color = "pink", size = "md", muted 
   return (
     <span
       className={cn("flex shrink-0 items-center justify-center rounded-2xl text-white", box)}
-      style={{ background: muted ? "#CBD5E1" : (ACCOUNT_COLOR_HEX[color] ?? ACCOUNT_COLOR_HEX.pink) }}
+      style={{ background: muted ? ink.faint : (ACCOUNT_COLOR_HEX[color] ?? ACCOUNT_COLOR_HEX.pink) }}
     >
       <Icon className={glyph} strokeWidth={2.2} />
     </span>

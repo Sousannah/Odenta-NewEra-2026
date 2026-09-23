@@ -1,4 +1,5 @@
 import { cn } from "@/lib/cn";
+import { OdentaSpinner } from "./OdentaLoader";
 
 const VARIANTS = {
   primary:
@@ -46,11 +47,10 @@ export function Button({
       disabled={Tag === "button" ? disabled || loading : undefined}
       {...props}
     >
-      {loading ? (
-        <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-      ) : (
-        leftIcon
-      )}
+      {/* The wordmark loader cannot fit inside a control, so a button waits
+          with its compact sibling — inheriting the label colour, which is what
+          keeps it legible on both the blue fill and the white outline. */}
+      {loading ? <OdentaSpinner size={16} tone="current" /> : leftIcon}
       {children}
       {rightIcon}
     </Tag>

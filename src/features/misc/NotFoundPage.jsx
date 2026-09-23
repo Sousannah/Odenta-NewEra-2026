@@ -4,6 +4,7 @@ import { useAuth } from "@/auth/AuthContext";
 import { roleHome } from "@/auth/roles";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/ui/Button";
+import { auth } from "@/config/paths";
 
 /**
  * Genuine 404 — no route matched the URL.
@@ -15,7 +16,7 @@ export default function NotFoundPage() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { role, isAuthenticated } = useAuth();
-  const home = isAuthenticated ? roleHome(role) : "/sign-in";
+  const home = isAuthenticated ? roleHome(role) : auth.signIn;
 
   return (
     <div className="flex h-full min-h-[60vh] items-center justify-center p-6">

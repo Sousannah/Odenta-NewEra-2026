@@ -6,10 +6,30 @@ import { Skeleton } from "./Skeleton";
 
 /**
  * Column shape:
- *   { key, header, width?, align?, sortable?, render?(row, index) }
+ *   { key, header, width?, align?, sortable?, render?(row, index),
+ *     primary?, mobile? }
  *
  * `expandable(row)` returns the node rendered in a full-width sub-row
  * (used by the Sales bill list).
+ *
+ * ---------------------------------------------------------------- on a phone
+ *
+ * Below `md` the table stops being a table. A seven-column grid on a 375px
+ * screen is a horizontal scrollbar, and a horizontal scrollbar inside a
+ * vertically scrolling page is the single most reliably unusable pattern on
+ * a touch device — you cannot swipe the row without the page moving, and the
+ * columns that matter are off-screen anyway.
+ *
+ * Each row becomes a card instead: the first column is the heading, the rest
+ * are label/value pairs, and the actions sit along the bottom. No caller has
+ * to do anything — every existing table gets this — but two optional column
+ * flags tune it:
+ *
+ *   `primary: true`  use this column as the card heading instead of the first
+ *   `mobile: false`  leave this column out of the card entirely
+ *
+ * A column whose header is empty is treated as actions: it keeps its own row
+ * at the foot of the card with no label, which is what an icon strip wants.
  */
 export function DataTable({
   columns,
@@ -58,6 +78,16 @@ export function DataTable({
 
   const pad = dense ? "px-4 py-2.5" : "px-4 py-3.5";
 
+  /* Which column titles the card, and which ones fill it. */
+  const shown = columns.filter((column) => column.mobile !== false);
+  const heading = shown.find((column) => column.primary) ?? shown[0];
+  const isActions = (column) => !column.header;
+  const body = shown.filter((column) => column !== heading && !isActions(column));
+  const actions = shown.filter((column) => column !== heading && isActions(column));
+
+  const cell = (column, row, index) =>
+    column.render ? column.render(row, index) : row[column.key];
+
   if (loading) {
     return (
       <div className={cn("od-card overflow-hidden", className)}>
@@ -72,7 +102,100 @@ export function DataTable({
 
   return (
     <div className={cn("od-card overflow-hidden", className)}>
-      <div className="overflow-x-auto">
+      {/* ------------------------------------------------------- phone cards */}
+      <div className="md:hidden">
+        {sorted.length === 0 ? (
+          <EmptyState
+            title={emptyTitle}
+            description={emptyDescription}
+            action={emptyAction}
+            className="py-12"
+          />
+        ) : (
+          <ul className="divide-y divide-slate-100">
+            {sorted.map((row, index) => {
+              const key = rowKey(row, index);
+              const isOpen = expanded.has(key);
+              return (
+                <li key={key}>
+                  <div
+                    role={onRowClick ? "button" : undefined}
+                    tabIndex={onRowClick ? 0 : undefined}
+                    onClick={onRowClick ? () => onRowClick(row) : undefined}
+                    onKeyDown={
+                      onRowClick
+                        ? (event) => {
+                            if (event.key === "Enter" || event.key === " ") {
+                              event.preventDefault();
+                              onRowClick(row);
+                            }
+                          }
+                        : undefined
+                    }
+                    className={cn(
+                      "flex flex-col gap-2.5 px-4 py-3.5",
+                      onRowClick && "od-focus cursor-pointer transition active:bg-brand-50/60"
+                    )}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1 text-[14px] font-bold text-ink">
+                        {heading ? cell(heading, row, index) : null}
+                      </div>
+                      {expandable ? (
+                        <button
+                          type="button"
+                          aria-label={isOpen ? "Collapse row" : "Expand row"}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            toggleExpand(key);
+                          }}
+                          className="-mr-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-ink-soft transition hover:bg-slate-100"
+                        >
+                          <ChevronDown
+                            className={cn("h-4 w-4 transition-transform", isOpen && "rotate-180")}
+                          />
+                        </button>
+                      ) : null}
+                    </div>
+
+                    {body.length ? (
+                      <dl className="grid grid-cols-2 gap-x-3 gap-y-2">
+                        {body.map((column) => (
+                          <div key={column.key} className="min-w-0">
+                            <dt className="text-[10px] font-bold uppercase tracking-[0.07em] text-ink-faint">
+                              {column.header}
+                            </dt>
+                            <dd className="mt-0.5 min-w-0 text-[13px] text-ink">
+                              {cell(column, row, index)}
+                            </dd>
+                          </div>
+                        ))}
+                      </dl>
+                    ) : null}
+
+                    {actions.length ? (
+                      <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                        {actions.map((column) => (
+                          <Fragment key={column.key}>{cell(column, row, index)}</Fragment>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+
+                  {expandable && isOpen ? (
+                    <div className="border-t border-slate-100 bg-slate-50/60 px-4">
+                      {expandable(row)}
+                    </div>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+
+      {/* ------------------------------------------------------ the table */}
+      <div className="hidden overflow-x-auto md:block">
         <table className="w-full border-collapse text-left text-sm">
           <thead>
             <tr className="bg-slate-50/80">

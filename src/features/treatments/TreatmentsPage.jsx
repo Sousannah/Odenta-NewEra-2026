@@ -190,7 +190,7 @@ export default function TreatmentsPage() {
                   value={query}
                   onChange={setQuery}
                   placeholder="Search treatment or code…"
-                  className="w-[300px]"
+                  className="w-full sm:w-[300px]"
                 />
                 <MiniSelect
                   className="h-10"

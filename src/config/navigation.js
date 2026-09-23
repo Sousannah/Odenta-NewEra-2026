@@ -1,134 +1,50 @@
-import {
-  Activity,
-  BarChart3,
-  Boxes,
-  CalendarCheck,
-  ClipboardList,
-  CreditCard,
-  FlaskConical,
-  Headphones,
-  LayoutDashboard,
-  PieChart,
-  ReceiptText,
-  ScrollText,
-  ShieldCheck,
-  Stethoscope,
-  Users,
-  UserSquare2,
-  Wallet,
-  Wrench,
-} from "lucide-react";
 import { P } from "@/auth/permissions";
-import { ROLE_META } from "@/auth/roles";
+import { app } from "@/config/paths";
+import { navFor, navItemsFor } from "@/config/nav";
 
 /**
- * The navigation registry.
+ * The clinic portal's route-permission map, and two thin re-exports.
  *
- * Every entry declares the permission it needs. `navigationFor(user)` filters
- * the tree, so a role never sees a link it cannot open — and the route guard
- * enforces the same permission if someone types the URL.
+ * This file used to own a twenty-entry navigation tree that every clinic role's
+ * sidebar was derived from by filtering on permissions. That tree is gone. Each
+ * role's sidebar is now written out in full in `config/nav/clinicRoles.js`, and
+ * `navFor(user)` is a lookup by role rather than a filter — see
+ * `config/nav/README.md` for the two failures the filtered version produced, the
+ * visible one being a Super Admin rendering the clinic owner's navigation.
+ *
+ * What stays here is `ROUTE_PERMISSIONS`: the map the route guard reads when
+ * somebody types a URL. It is a different question from "what is this role
+ * offered" — a supervisor is not offered the case browser and can still follow a
+ * link into one — so it stays a per-path map rather than being folded into the
+ * per-role lists.
+ *
+ * The two functions below are kept so existing imports do not have to move. They
+ * delegate and add nothing.
  */
-const SECTIONS = [
-  {
-    group: null,
-    items: [
-      { key: "dashboard", label: "Dashboard", icon: LayoutDashboard, home: true },
-    ],
-  },
-  {
-    group: "Clinic",
-    items: [
-      {
-        key: "schedule",
-        label: "Reservations",
-        to: "/schedule",
-        icon: CalendarCheck,
-        permission: [P.APPOINTMENT_VIEW_ALL, P.APPOINTMENT_VIEW_OWN],
-      },
-      { key: "patients", label: "Patients", to: "/patients", icon: UserSquare2, permission: P.PATIENT_VIEW },
-      { key: "recalls", label: "Recalls", to: "/recalls", icon: Activity, permission: P.RECALL_VIEW },
-      { key: "treatments", label: "Treatments", to: "/treatments", icon: Stethoscope, permission: P.TREATMENT_VIEW },
-      { key: "staff", label: "Staff List", to: "/staff", icon: Users, permission: P.STAFF_VIEW },
-    ],
-  },
-  {
-    group: "Clinical",
-    items: [
-      { key: "plans", label: "Treatment Plans", to: "/treatment-plans", icon: ClipboardList, permission: [P.TREATMENT_PLAN_CREATE, P.PATIENT_CLINICAL_VIEW] },
-      { key: "lab", label: "Lab Cases", to: "/lab-cases", icon: FlaskConical, permission: P.LAB_CASE_VIEW },
-      { key: "sterilization", label: "Sterilisation", to: "/sterilisation", icon: ShieldCheck, permission: P.STERILIZATION_VIEW },
-    ],
-  },
-  {
-    group: "Finance",
-    items: [
-      { key: "accounts", label: "Accounts", to: "/accounts", icon: Wallet, permission: P.ACCOUNT_VIEW },
-      { key: "sales", label: "Sales", to: "/sales", icon: BarChart3, permission: P.BILL_VIEW },
-      { key: "purchases", label: "Purchases", to: "/purchases", icon: ReceiptText, permission: P.PURCHASE_VIEW },
-      { key: "payment-methods", label: "Payment Method", to: "/payment-methods", icon: CreditCard, permission: P.PAYMENT_METHOD_MANAGE },
-    ],
-  },
-  {
-    group: "Physical Asset",
-    items: [
-      { key: "stocks", label: "Stocks", to: "/stocks", icon: Boxes, permission: P.STOCK_VIEW },
-      { key: "peripherals", label: "Peripherals", to: "/peripherals", icon: Wrench, permission: P.PERIPHERAL_VIEW },
-    ],
-  },
-];
 
-const FOOTER = [
-  { key: "report", label: "Report", to: "/report", icon: PieChart, permission: [P.REPORT_CLINICAL, P.REPORT_FINANCIAL] },
-  { key: "audit", label: "Audit Log", to: "/audit", icon: ScrollText, permission: P.AUDIT_VIEW },
-  { key: "support", label: "Customer Support", to: "/support", icon: Headphones, permission: P.SUPPORT_VIEW },
-];
+/** @deprecated Import `navFor` from `@/config/nav`. */
+export const navigationFor = navFor;
 
-const allow = (user, permission) => {
-  if (!permission) return true;
-  const granted = user?.permissions ?? [];
-  const list = Array.isArray(permission) ? permission : [permission];
-  return list.some((entry) => granted.includes(entry));
-};
-
-/** Sidebar tree for the signed-in user, with the dashboard pointed at their home. */
-export function navigationFor(user) {
-  const home = ROLE_META[user?.role]?.home ?? "/";
-
-  const sections = SECTIONS.map((section) => ({
-    ...section,
-    items: section.items
-      .filter((item) => allow(user, item.permission))
-      .map((item) => (item.home ? { ...item, to: home } : item)),
-  })).filter((section) => section.items.length > 0);
-
-  const footer = FOOTER.filter((item) => allow(user, item.permission));
-
-  return { sections, footer };
-}
-
-/** Flat list used by the top bar to title the current route. */
-export function allNavItems(user) {
-  const { sections, footer } = navigationFor(user);
-  return [...sections.flatMap((section) => section.items), ...footer];
-}
+/** @deprecated Import `navItemsFor` from `@/config/nav`. */
+export const allNavItems = navItemsFor;
 
 /** Route-level permission map — the guard reads this. */
 export const ROUTE_PERMISSIONS = {
-  "/schedule": [P.APPOINTMENT_VIEW_ALL, P.APPOINTMENT_VIEW_OWN],
-  "/patients": P.PATIENT_VIEW,
-  "/recalls": P.RECALL_VIEW,
-  "/treatments": P.TREATMENT_VIEW,
-  "/staff": P.STAFF_VIEW,
-  "/treatment-plans": [P.TREATMENT_PLAN_CREATE, P.PATIENT_CLINICAL_VIEW],
-  "/lab-cases": P.LAB_CASE_VIEW,
-  "/sterilisation": P.STERILIZATION_VIEW,
-  "/accounts": P.ACCOUNT_VIEW,
-  "/sales": P.BILL_VIEW,
-  "/purchases": P.PURCHASE_VIEW,
-  "/payment-methods": P.PAYMENT_METHOD_MANAGE,
-  "/stocks": P.STOCK_VIEW,
-  "/peripherals": P.PERIPHERAL_VIEW,
-  "/report": [P.REPORT_CLINICAL, P.REPORT_FINANCIAL],
-  "/audit": P.AUDIT_VIEW,
-  "/support": P.SUPPORT_VIEW,
+  [app.schedule]: [P.APPOINTMENT_VIEW_ALL, P.APPOINTMENT_VIEW_OWN],
+  [app.patients]: P.PATIENT_VIEW,
+  [app.recalls]: P.RECALL_VIEW,
+  [app.treatments]: P.TREATMENT_VIEW,
+  [app.staff]: P.STAFF_VIEW,
+  [app.treatmentPlans]: [P.TREATMENT_PLAN_CREATE, P.PATIENT_CLINICAL_VIEW],
+  [app.labCases]: P.LAB_CASE_VIEW,
+  [app.sterilisation]: P.STERILIZATION_VIEW,
+  [app.accounts]: P.ACCOUNT_VIEW,
+  [app.sales]: P.BILL_VIEW,
+  [app.purchases]: P.PURCHASE_VIEW,
+  [app.paymentMethods]: P.PAYMENT_METHOD_MANAGE,
+  [app.stocks]: P.STOCK_VIEW,
+  [app.peripherals]: P.PERIPHERAL_VIEW,
+  [app.report]: [P.REPORT_CLINICAL, P.REPORT_FINANCIAL],
+  [app.audit]: P.AUDIT_VIEW,
+  [app.support]: P.SUPPORT_VIEW,
 };

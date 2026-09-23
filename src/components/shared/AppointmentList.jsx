@@ -52,7 +52,48 @@ export function AppointmentList({
                   <span className="truncate text-[13.5px] font-bold text-ink">
                     {item.patientName}
                   </span>
-                  <PatientAlerts patient={{ alerts: item.patientAlerts }} compact />
+                  {/**
+                   * Alerts only where the row actually carries them.
+                   *
+                   * Three states, and conflating any two of them is a bug:
+                   *
+                   *   field present with entries — show the count
+                   *   field present and empty/null — PatientAlerts decides:
+                   *     `[]` is "checked and clear", `null` is "not checked"
+                   *     and earns an amber warning
+                   *   field ABSENT — this caller may not read the clinical
+                   *     record, so there is nothing to say
+                   *
+                   * The last one is why this is an `in` check rather than a
+                   * truthiness test. The front desk holds `patient:view` and
+                   * not `patient_clinical:view`, so its rows carry no alert
+                   * field at all — and passing `undefined` through would make
+                   * PatientAlerts read it as an unchecked history and stamp
+                   * "history not checked" on every row of the desk's board.
+                   * That is noise the desk cannot act on, and a clinical prompt
+                   * aimed at the one role with no clinical permission.
+                   */}
+                  {"patientAlerts" in item ? (
+                    <PatientAlerts
+                      patient={{
+                        alerts: item.patientAlerts,
+                        allergies: item.patientAllergies,
+                        asa: item.patientAsa,
+                        /**
+                         * Passed through where the caller states it.
+                         *
+                         * A clinician's board knows whether a medical document
+                         * was actually read and says so; `undefined` here means
+                         * it did not, and `PatientAlerts` falls back to
+                         * inferring it from the three fields above. Forwarding
+                         * the flag is what stops the component guessing at
+                         * something the server already knew.
+                         */
+                        medicalReviewed: item.medicalReviewed,
+                      }}
+                      compact
+                    />
+                  ) : null}
                 </span>
                 <span className="block truncate text-[12px] text-ink-soft">
                   {item.treatment}

@@ -387,7 +387,7 @@ export default function AccountsPage() {
   };
 
   return (
-    <div className="flex flex-col gap-5 p-6">
+    <div className="flex flex-col gap-4 p-4 sm:gap-5 sm:p-6">
       <Card className="flex-row flex-wrap items-center gap-10 px-6 py-5">
         <StatBlock
           label="Total asset value"

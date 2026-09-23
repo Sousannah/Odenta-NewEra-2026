@@ -2,17 +2,142 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/tooth.svg" />
+    <!-- The square, background-removed tooth: the wide logo was unreadable at
+         tab size, and its white plate showed as a box on a dark tab strip. -->
+    <link rel="icon" type="image/png" href="/imgs/odenta-mark.png" />
+    <link rel="apple-touch-icon" href="/imgs/odenta-mark.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Odenta · Clinic</title>
+    <meta name="theme-color" content="#0077B6" />
+    <title>Odenta — AI dental platform for schools and clinics</title>
+    <meta
+      name="description"
+      content="Odenta joins clinical-grade radiograph analysis to the everyday work of a dental school and a dental clinic — charting, supervision, scheduling and billing on one patient record."
+    />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Odenta — AI dental platform" />
+    <meta
+      property="og:description"
+      content="AI imaging, digital charting, supervision and billing on one patient record."
+    />
+    <meta property="og:image" content="/odenta-pic.png" />
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap"
       rel="stylesheet"
     />
+
+    <!--
+      First-paint splash.
+
+      Everything below is inert markup the browser can draw before a single
+      byte of JavaScript has been parsed, so the gap between opening the app
+      and React mounting shows the Odenta wordmark rather than a white page.
+      `main.jsx` removes it once the first render has committed; the CSS is a
+      duplicate of `.od-loader-dash` because the stylesheet itself is one of
+      the things still loading at this point.
+    -->
+    <style>
+      #od-boot {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        background: #ffffff;
+        transition: opacity 260ms ease;
+      }
+      #od-boot[hidden] {
+        display: none;
+      }
+      #od-boot.od-boot-out {
+        opacity: 0;
+        pointer-events: none;
+      }
+      #od-boot svg {
+        width: 64px;
+        height: 64px;
+      }
+      #od-boot .od-boot-dash {
+        fill: none;
+        stroke-width: 4;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        animation:
+          od-loader-dash-array 2s ease-in-out infinite,
+          od-loader-dash-offset 2s linear infinite;
+      }
+      @keyframes od-loader-dash-array {
+        0% {
+          stroke-dasharray: 0 1 359 0;
+        }
+        50% {
+          stroke-dasharray: 0 359 1 0;
+        }
+        100% {
+          stroke-dasharray: 359 1 0 0;
+        }
+      }
+      @keyframes od-loader-dash-offset {
+        0% {
+          stroke-dashoffset: 365;
+        }
+        100% {
+          stroke-dashoffset: 5;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #od-boot .od-boot-dash {
+          animation: none;
+          opacity: 0.85;
+        }
+      }
+    </style>
   </head>
   <body>
+    <div id="od-boot" role="status" aria-label="Loading Odenta" dir="ltr">
+      <svg width="0" height="0" viewBox="0 0 64 64" style="position: absolute" aria-hidden="true">
+        <defs>
+          <linearGradient id="odBootDeep" gradientUnits="userSpaceOnUse" x1="0" y1="62" x2="0" y2="2">
+            <stop stop-color="#00639A" />
+            <stop offset="1" stop-color="#0E88C6" />
+          </linearGradient>
+          <linearGradient id="odBootSignature" gradientUnits="userSpaceOnUse" x1="0" y1="64" x2="0" y2="0">
+            <stop stop-color="#0077B6" />
+            <stop offset="1" stop-color="#20B2AA" />
+          </linearGradient>
+          <linearGradient id="odBootAqua" gradientUnits="userSpaceOnUse" x1="0" y1="62" x2="0" y2="2">
+            <stop stop-color="#20B2AA" />
+            <stop offset="1" stop-color="#63D9D1" />
+          </linearGradient>
+        </defs>
+      </svg>
+
+      <svg viewBox="8 8 48 48" fill="none" aria-hidden="true">
+        <circle cx="32" cy="32" r="20" stroke="url(#odBootAqua)" pathLength="360" class="od-boot-dash" />
+      </svg>
+      <svg viewBox="8 8 48 48" fill="none" aria-hidden="true">
+        <path d="M12,12 h20 a20,20 0 0,1 0,40 h-20 z" stroke="url(#odBootDeep)" pathLength="360" class="od-boot-dash" />
+      </svg>
+      <svg viewBox="8 8 48 48" fill="none" aria-hidden="true">
+        <path d="M12,12 h32 m-32,0 v40 h32 m-32,-20 h24" stroke="url(#odBootSignature)" pathLength="360" class="od-boot-dash" />
+      </svg>
+      <svg viewBox="8 8 48 48" fill="none" aria-hidden="true">
+        <path d="M12,52 v-40 l40,40 v-40" stroke="url(#odBootDeep)" pathLength="360" class="od-boot-dash" />
+      </svg>
+      <svg viewBox="8 8 48 48" fill="none" aria-hidden="true">
+        <path d="M12,12 h40 m-20,0 v40" stroke="url(#odBootAqua)" pathLength="360" class="od-boot-dash" />
+      </svg>
+      <svg viewBox="8 8 48 48" fill="none" aria-hidden="true">
+        <path d="M12,52 l20,-40 l20,40 m-12,-12 h-16" stroke="url(#odBootSignature)" pathLength="360" class="od-boot-dash" />
+      </svg>
+    </div>
+
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

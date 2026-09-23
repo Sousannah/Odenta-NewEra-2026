@@ -99,11 +99,10 @@ function StepInfo({ form, update, isDentist }) {
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Role">
           <Select value={form.role} onChange={(event) => update({ role: event.target.value })}>
-            {["Dentist", "Dental Assistant", "Front Office", "Lab Technician", "Clinic Manager", "Accountant"].map(
-              (role) => (
-                <option key={role}>{role}</option>
-              )
-            )}
+            {/* The lab is an outside supplier, not a member of staff. */}
+            {["Dentist", "Dental Assistant", "Receptionist"].map((role) => (
+              <option key={role}>{role}</option>
+            ))}
           </Select>
         </Field>
 

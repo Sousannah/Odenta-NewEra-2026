@@ -1,17 +1,18 @@
+import { useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { Download, Percent, Star, TrendingUp, UserPlus, Users } from "lucide-react";
 import { useAsync } from "@/hooks";
-import { analyticsService } from "@/services";
+import { ownerService } from "@/services";
 import { formatMoney, formatNumber, formatPercent } from "@/lib/format";
 import { ROLES } from "@/auth/roles";
 import { Card, CardBody, CardHeader, Caption } from "@/components/ui/Card";
 import { MiniSelect } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
-import { CardSkeleton } from "@/components/ui/Skeleton";
+import { OdentaLoaderPanel } from "@/components/ui/OdentaLoader";
 import { DataTable } from "@/components/ui/DataTable";
 import { ProgressBar } from "@/components/ui/Stepper";
 import { DashboardShell, StatBlock } from "@/components/shared";
-import { DonutChart, LineAreaChart, GroupedBarChart, SegmentBar } from "@/components/charts";
+import { DonutChart, LineAreaChart, GroupedBarChart, HorizontalBars, SegmentBar } from "@/components/charts";
 
 /**
  * Clinic Owner.
@@ -19,23 +20,54 @@ import { DonutChart, LineAreaChart, GroupedBarChart, SegmentBar } from "@/compon
  * The question this screen answers is "is the practice healthy?" — money in,
  * money out, how well the chairs are used, and which clinician or branch is
  * carrying the load.
+ *
+ * It also carries what used to sit on a separate accountant's board. In an
+ * Egyptian private practice the owner *is* the finance function: the desk takes
+ * the cash, and the owner is the one who has to notice that a quarter of it is
+ * sixty days old.
  */
+/**
+ * The windows the board offers.
+ *
+ * A fixed set rather than a free day count, matching the server: each value is
+ * its own cache entry there, and an unbounded parameter would turn the
+ * most-refreshed screen in the product into the most expensive one.
+ */
+const RANGES = [
+  { value: "30", label: "Last 30 days" },
+  { value: "90", label: "Last quarter" },
+  { value: "365", label: "Last 12 months" },
+];
+
 export default function OwnerDashboard() {
   const { user } = useOutletContext() ?? {};
-  const { data, loading } = useAsync(() => analyticsService.getDashboard(ROLES.OWNER), []);
 
-  if (loading || !data) {
-    return (
-      <div className="grid grid-cols-12 gap-5 p-6">
-        <CardSkeleton className="col-span-12 xl:col-span-8" />
-        <CardSkeleton className="col-span-12 xl:col-span-4" />
-        <CardSkeleton className="col-span-12 xl:col-span-4" />
-        <CardSkeleton className="col-span-12 xl:col-span-8" />
-      </div>
-    );
+  /**
+   * The range selector drives the fetch.
+   *
+   * It used to be a `defaultValue` on an uncontrolled select — three options
+   * that changed nothing, which is worse than no control at all: the numbers
+   * stay still and the reader concludes the practice had an identical quarter.
+   */
+  const [range, setRange] = useState("30");
+  const { data, loading } = useAsync(() => ownerService.getBoard(range), [range], null, {
+    /* The heaviest read in the practice portal, and the first thing an owner
+       sees every time they open the app. */
+    key: `clinic:owner-board:${range}`,
+  });
+
+  /* Held across a range change so switching window does not blank the page —
+     the previous board stays up, dimmed, while the next one arrives. */
+  if (!data) {
+    return <OdentaLoaderPanel />;
   }
 
-  const { kpis, cashflow, expenses, incomeExpense, patients, popularTreatments, stock } = data;
+  const { kpis, cashflow, expenses, incomeExpense, patients, popularTreatments, stock, ageing, outstanding } = data;
+
+  const outstandingTotal = ageing.reduce((sum, row) => sum + row.value, 0);
+  /* Guarded because a practice with nothing outstanding divides by zero here,
+     and the tile it produces reads "NaN% over 90 days". */
+  const over90Share = outstandingTotal > 0 ? Math.round((ageing[ageing.length - 1].value / outstandingTotal) * 100) : 0;
 
   const dentistColumns = [
     { key: "name", header: "Dentist", sortable: true, render: (row) => <b>{row.name}</b> },
@@ -71,12 +103,24 @@ export default function OwnerDashboard() {
       subtitle="Whole-practice performance"
       actions={
         <>
-          <MiniSelect className="h-10" defaultValue="30">
-            <option value="30">Last 30 days</option>
-            <option value="90">Last quarter</option>
-            <option value="365">Last 12 months</option>
+          <MiniSelect
+            className="h-10"
+            value={range}
+            disabled={loading}
+            onChange={(event) => setRange(event.target.value)}
+          >
+            {RANGES.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
           </MiniSelect>
-          <Button leftIcon={<Download className="h-4 w-4" />}>Export board pack</Button>
+          <Button
+            leftIcon={<Download className="h-4 w-4" />}
+            onClick={() => exportBoardPack(data, range)}
+          >
+            Export board pack
+          </Button>
         </>
       }
       kpis={[
@@ -86,7 +130,13 @@ export default function OwnerDashboard() {
         { label: "Active patients", value: formatNumber(kpis.activePatients.total), change: kpis.activePatients.change, icon: <UserPlus className="h-5 w-5" />, tone: "brand" },
       ]}
     >
-      <div className="grid grid-cols-12 gap-5">
+      {/* Dimmed rather than replaced while a new window loads: the previous
+          board stays readable, so changing range does not blank the page and
+          then repaint it. */}
+      <div
+        className={`grid grid-cols-12 gap-5 transition-opacity ${loading ? "pointer-events-none opacity-60" : ""}`}
+        aria-busy={loading}
+      >
         <Card className="col-span-12 xl:col-span-8">
           <CardHeader
             title="Cashflow"
@@ -158,16 +208,16 @@ export default function OwnerDashboard() {
           />
           <CardBody className="pt-3">
             <div className="flex flex-wrap items-start justify-between gap-4">
-              <StatBlock label="Total income" accent="bg-[#8ECC97]" value={formatMoney(incomeExpense.income.total)} change={incomeExpense.income.change} />
-              <StatBlock label="Total expenses" accent="bg-[#FEB509]" value={formatMoney(incomeExpense.expense.total)} change={incomeExpense.expense.change} />
+              <StatBlock label="Total income" accent="bg-success" value={formatMoney(incomeExpense.income.total)} change={incomeExpense.income.change} />
+              <StatBlock label="Total expenses" accent="bg-warning" value={formatMoney(incomeExpense.expense.total)} change={incomeExpense.expense.change} />
             </div>
             <div className="mt-4">
               <GroupedBarChart
                 data={incomeExpense.series}
                 height={190}
                 series={[
-                  { key: "income", label: "Income", color: "#8ECC97" },
-                  { key: "expense", label: "Expense", color: "#FEB509" },
+                  { key: "income", label: "Income", color: "#8ECC97", format: "money" },
+                  { key: "expense", label: "Expense", color: "#FEB509", format: "money" },
                 ]}
               />
             </div>
@@ -230,6 +280,31 @@ export default function OwnerDashboard() {
           </CardBody>
         </Card>
 
+        <Card className="col-span-12 md:col-span-6 xl:col-span-4">
+          <CardHeader
+            title="Outstanding balances"
+            subtitle="What patients still owe, by age"
+          />
+          <CardBody className="pt-3">
+            <div className="flex flex-wrap items-end justify-between gap-4">
+              <StatBlock
+                label="Total outstanding"
+                value={formatMoney(outstandingTotal)}
+                change={outstanding.change}
+              />
+              <span className="text-[12px] font-semibold text-ink-soft">
+                {over90Share}% over 90 days
+              </span>
+            </div>
+            <div className="mt-4">
+              <HorizontalBars
+                data={ageing.map((row) => ({ name: row.bucket, value: row.value }))}
+                valueFormatter={formatMoney}
+              />
+            </div>
+          </CardBody>
+        </Card>
+
         <Card className="col-span-12 xl:col-span-7">
           <CardHeader title="Dentist performance" subtitle="Workload, utilisation and revenue" />
           <CardBody className="pt-3">
@@ -271,6 +346,66 @@ export default function OwnerDashboard() {
   );
 }
 
+/**
+ * Export the board as a CSV the owner can open in Excel.
+ *
+ * Generated in the browser from the payload already on screen, deliberately.
+ * The alternative — a server endpoint that rebuilds and renders it — would mean
+ * a second implementation of every fold on this page, and the day the two
+ * disagreed the exported figure and the displayed one would both be defensible.
+ * Here the file is definitionally what the owner is looking at.
+ *
+ * CSV rather than PDF because this is the number-checking artefact: it gets
+ * pasted into a spreadsheet next to a bank statement. The board *pack* a PDF
+ * implies is a different deliverable and would be the server's job.
+ */
+function exportBoardPack(board, range) {
+  const rows = [
+    ["Odenta — practice board", `Last ${range} days`],
+    ["Generated", new Date().toISOString()],
+    [],
+    ["Metric", "Value", "Change %"],
+    ["Revenue", board.kpis.revenue.total, board.kpis.revenue.change ?? ""],
+    ["Profit", board.kpis.profit.total, board.kpis.profit.change ?? ""],
+    ["Chair utilisation %", board.kpis.chairUtilisation.total, board.kpis.chairUtilisation.change ?? ""],
+    ["Active patients", board.kpis.activePatients.total, board.kpis.activePatients.change ?? ""],
+    [],
+    ["Dentist", "Appointments", "Revenue", "Utilisation %"],
+    ...board.byDentist.map((row) => [row.name, row.appointments, row.revenue, row.utilisation]),
+    [],
+    ["Branch", "Appointments", "Revenue", "Utilisation %"],
+    ...board.branches.map((row) => [row.name, row.appointments, row.revenue, row.utilisation]),
+    [],
+    ["Expense category", "Amount", "Share %"],
+    ...board.expenses.slices.map((slice) => [slice.name, slice.amount, slice.value]),
+    [],
+    ["Receivables age", "Amount"],
+    ...board.ageing.map((row) => [row.bucket, row.value]),
+  ];
+
+  /**
+   * Escaped properly, because a branch name contains a comma and a category
+   * can contain an ampersand and a quote. `rows.join(",")` produces a file that
+   * opens with the columns shifted from the first such value onwards — wrong,
+   * and it looks fine until somebody reconciles it.
+   */
+  const escape = (value) => {
+    const text = value === null || value === undefined ? "" : String(value);
+    return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+  };
+
+  const csv = rows.map((row) => row.map(escape).join(",")).join("\n");
+  const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
+
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `odenta-board-${range}d-${new Date().toISOString().slice(0, 10)}.csv`;
+  link.click();
+  /* Revoked on the next tick rather than immediately — Safari has not started
+     the download by the time the click handler returns. */
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 function PatientSplit({ data }) {
   const total = data.newPatients + data.returningPatients;
   const newShare = (data.newPatients / total) * 100;
@@ -291,7 +426,7 @@ function PatientSplit({ data }) {
         </div>
       </div>
       <div className="mt-4 flex items-center gap-2">
-        <span className="h-3 rounded-sm bg-[#61B1FF]" style={{ width: `${newShare}%` }} />
+        <span className="h-3 rounded-sm bg-brand-400" style={{ width: `${newShare}%` }} />
         <span className="flex h-3 gap-[3px] overflow-hidden" style={{ width: `${returningShare}%` }}>
           {Array.from({ length: Math.round(returningShare) }).map((_, index) => (
             <span key={index} className="h-3 w-[3px] shrink-0 rounded-sm bg-slate-300" />

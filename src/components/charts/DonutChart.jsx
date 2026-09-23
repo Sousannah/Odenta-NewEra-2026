@@ -1,11 +1,23 @@
 import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 import { formatMoney } from "@/lib/format";
+import { chartSeries } from "@/theme/tokens";
 
 /**
  * Donut with a dashed inner ring and a centred total, matching the
  * "Expenses" card.
+ *
+ * Slices are `[{ name, value, color? }]`. A slice with no `color` falls back to
+ * the categorical palette in order, so a caller counting cases per department
+ * does not have to pick hexes. `valueFormatter` exists because the centre is a
+ * money total on the finance screens and a plain count everywhere else.
  */
-export function DonutChart({ data, total, label = "Total Expense", size = 190 }) {
+export function DonutChart({
+  data,
+  total,
+  label = "Total Expense",
+  size = 190,
+  valueFormatter = formatMoney,
+}) {
   return (
     <div className="relative shrink-0" style={{ width: size, height: size }}>
       <ResponsiveContainer width="100%" height="100%">
@@ -22,8 +34,11 @@ export function DonutChart({ data, total, label = "Total Expense", size = 190 })
             endAngle={-270}
             stroke="none"
           >
-            {data.map((slice) => (
-              <Cell key={slice.name} fill={slice.color} />
+            {data.map((slice, index) => (
+              <Cell
+                key={slice.name}
+                fill={slice.color ?? chartSeries[index % chartSeries.length]}
+              />
             ))}
           </Pie>
         </PieChart>
@@ -38,7 +53,9 @@ export function DonutChart({ data, total, label = "Total Expense", size = 190 })
             <div className="text-[10px] font-semibold uppercase tracking-wide text-ink-soft">
               {label}
             </div>
-            <div className="mt-0.5 text-[19px] font-extrabold text-ink">{formatMoney(total)}</div>
+            <div className="mt-0.5 text-[19px] font-extrabold text-ink">
+              {valueFormatter(total)}
+            </div>
           </div>
         </div>
       </div>

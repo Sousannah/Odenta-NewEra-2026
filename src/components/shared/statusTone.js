@@ -7,6 +7,7 @@ const MAP = {
   finished: "success",
   waiting: "warning",
   cancelled: "danger",
+  postponed: "info",
   no_show: "neutral",
 
   // payments

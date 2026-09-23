@@ -1,0 +1,114 @@
+name: security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "0 6 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    name: build and test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check out the API beside this repository
+        # `test/roleNavigation.test.js` compares this app's permission matrix
+        # against the API's own, and skips itself when the API is not present.
+        # A skipped drift check is a drift check that is not running, so CI
+        # checks it out deliberately rather than hoping.
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/Odenta-NewEra-2026-backend
+          path: ../Odenta-NewEra-2026-backend
+          # A private sibling needs a token with read access to it. Without one
+          # the step fails loudly, which is the right outcome — the alternative
+          # is the cross-repo test quietly skipping forever.
+          token: ${{ secrets.SIBLING_REPO_TOKEN || github.token }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - run: npm ci
+
+      - name: Navigation, permission-drift and redirect tests
+        run: npm test
+
+      - name: Lint
+        # Errors only. `eslint.config.js` explains which rules are errors and
+        # why the rest are warnings — the short version is that every finding
+        # from the first run was read, and the ones left as warnings are not
+        # defects. So a non-zero exit here means somebody introduced something
+        # new, which is the only thing worth failing a build over.
+        run: npm run lint
+
+      - name: Production build
+        run: npm run build
+
+      - name: No secret reached the bundle
+        # Vite inlines anything named `VITE_*` into the output. A key added to
+        # `.env` "just for local testing" ships to every visitor, and the only
+        # place that is visible is here.
+        run: |
+          if grep -rIlE '(sk-[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16}|AccountKey=|-----BEGIN [A-Z ]*PRIVATE KEY-----)' dist/ ; then
+            echo "::error::a credential-shaped string is present in the build output"
+            exit 1
+          fi
+
+  audit:
+    name: dependency audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+
+      - name: Runtime dependencies (high and above)
+        # `--omit=dev` is the distinction that matters for a frontend: a Vite or
+        # esbuild advisory affects the dev server on a developer's laptop and
+        # ships nothing, while a React or React Router advisory reaches every
+        # visitor. Blocking on the first teaches people to ignore the check.
+        #
+        # Both sides are clean as of the react-router 7 and vite 6 upgrades, so
+        # this currently passes with nothing omitted either — see the note on
+        # the informational step below for why it is still separate.
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Full report including build tooling (informational)
+        if: always()
+        run: npm audit || true
+
+  secrets:
+    name: secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  hygiene:
+    name: repository hygiene
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: No .env file is tracked
+        run: |
+          tracked=$(git ls-files | grep -E '(^|/)\.env($|\.)' | grep -v '\.env\.example$' || true)
+          if [ -n "$tracked" ]; then
+            echo "::error::environment files are tracked: $tracked"
+            exit 1
+          fi

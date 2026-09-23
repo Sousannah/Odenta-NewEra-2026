@@ -25,7 +25,7 @@ const iso = (date) => format(date, "yyyy-MM-dd");
 function BoardToolbar({ date, onDate, total, dentistId, onDentist, dentists, onCreate, canCreate }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 py-4">
-      <div className="flex items-center gap-2.5">
+      <div className="flex min-w-0 items-center gap-2.5">
         <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-ink-muted">
           <CalendarCheck className="h-[18px] w-[18px]" />
         </span>
@@ -33,7 +33,7 @@ function BoardToolbar({ date, onDate, total, dentistId, onDentist, dentists, onC
         <span className="text-[13px] text-ink-soft">total appointments</span>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <Button variant="secondary" size="sm" onClick={() => onDate(new Date())}>
           Today
         </Button>
@@ -56,7 +56,10 @@ function BoardToolbar({ date, onDate, total, dentistId, onDentist, dentists, onC
         <span className="text-[15px] font-bold text-ink">{formatShortDate(date)}</span>
       </div>
 
-      <div className="flex items-center gap-2">
+      {/* Wraps rather than running off the side: three controls plus a
+          "New reservation" button is wider than a phone, and the row used to
+          push the whole board 51px past the viewport. */}
+      <div className="flex flex-wrap items-center gap-2">
         <MiniSelect className="h-9" value={dentistId} onChange={(event) => onDentist(event.target.value)}>
           <option value="all">All Dentist</option>
           {dentists.map((dentist) => (
@@ -120,12 +123,18 @@ export default function SchedulePage() {
   const { data: dentists = [], loading: loadingDentists } = useAsync(
     () => clinicService.getDentists(),
     [],
-    []
+    [],
+    /* The roster changes about once a month and is read on every schedule
+       open, which makes it the clearest win on this screen. */
+    { key: "clinic:dentists" }
   );
   const { data: appointments = [], loading, refetch } = useAsync(
     () => scheduleService.getAppointments({ date: iso(date), dentistId }),
     [date, dentistId],
-    []
+    [],
+    /* Paging back and forth through the week is the motion this makes
+       instant — each day keeps its last answer for a minute. */
+    { key: `clinic:appointments:${iso(date)}:${dentistId}` }
   );
   const { data: logs = [] } = useAsync(() => scheduleService.getAppointmentLog(), [], []);
 
@@ -156,7 +165,7 @@ export default function SchedulePage() {
   };
 
   return (
-    <div className="flex h-full flex-col px-6 pb-6">
+    <div className="flex h-full flex-col px-4 pb-4 sm:px-6 sm:pb-6">
       <Tabs defaultValue="calendar" className="h-full">
         <TabsList className="pt-4">
           <TabsTrigger value="calendar">Calendar</TabsTrigger>

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { CalendarRange, Download, Percent, TrendingUp, UserPlus, Users } from "lucide-react";
 import { useAsync } from "@/hooks";
 import { analyticsService } from "@/services";
@@ -9,10 +10,11 @@ import { Card, CardBody, CardHeader, Caption } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { MiniSelect } from "@/components/ui/Field";
 import { DataTable } from "@/components/ui/DataTable";
-import { CardSkeleton } from "@/components/ui/Skeleton";
+import { OdentaLoaderPanel } from "@/components/ui/OdentaLoader";
 import { ProgressBar } from "@/components/ui/Stepper";
 import { DonutChart, GroupedBarChart, HorizontalBars } from "@/components/charts";
-import { PageHeader, StatCard } from "@/components/shared";
+import { PageHeader, StatCard, StatGrid } from "@/components/shared";
+import { accent, chart, semantic } from "@/theme/tokens";
 
 /**
  * Reporting.
@@ -23,18 +25,38 @@ import { PageHeader, StatCard } from "@/components/shared";
  */
 export default function ReportPage() {
   const { can } = useAuth();
-  const { data, loading } = useAsync(() => analyticsService.getReport(), []);
 
   const showFinance = can(P.REPORT_FINANCIAL);
   const showClinical = can(P.REPORT_CLINICAL);
 
-  if (loading || !data) {
-    return (
-      <div className="grid grid-cols-12 gap-5 p-6">
-        <CardSkeleton className="col-span-12 xl:col-span-6" />
-        <CardSkeleton className="col-span-12 xl:col-span-6" />
-      </div>
-    );
+  /**
+   * The window, and it drives the fetch.
+   *
+   * This was an uncontrolled `defaultValue="30"` that changed nothing — which
+   * was merely useless until the server started honouring `range`, at which
+   * point it became a label that lied: the control read "Last 30 days" while
+   * the service asked for its own default of 90. A dead control is a bug; a
+   * dead control next to live data is a wrong number with a caption.
+   */
+  const [range, setRange] = useState("30");
+
+  /**
+   * The clinical block is asked for only when it will be rendered.
+   *
+   * It is the one part of this payload the server cannot fold from counters —
+   * the caries mix and the recall tally describe the roster as it stands today
+   * — so it costs two aggregate queries. A finance-only reader would pay for
+   * them and then be shown nothing.
+   */
+  const { data, loading } = useAsync(
+    () => analyticsService.getReport({ range, clinical: showClinical }),
+    [range, showClinical]
+  );
+
+  /* Held across a range change so switching window dims the report rather than
+     blanking it. */
+  if (!data) {
+    return <OdentaLoaderPanel />;
   }
 
   const dentistColumns = [
@@ -61,23 +83,33 @@ export default function ReportPage() {
   ];
 
   return (
-    <div className="flex flex-col gap-5 p-6">
+    <div className="flex flex-col gap-4 p-4 sm:gap-5 sm:p-6">
       <PageHeader
         title="Report"
         description="How the clinic performed this period, across treatments and dentists."
         actions={
           <>
-            <MiniSelect className="h-10" defaultValue="30">
+            <MiniSelect
+              className="h-10"
+              value={range}
+              disabled={loading}
+              onChange={(event) => setRange(event.target.value)}
+            >
               <option value="30">Last 30 days</option>
               <option value="90">Last quarter</option>
               <option value="365">Last 12 months</option>
             </MiniSelect>
-            <Button leftIcon={<Download className="h-4 w-4" />}>Export report</Button>
+            <Button
+              leftIcon={<Download className="h-4 w-4" />}
+              onClick={() => exportReport(data, range, { showFinance, showClinical })}
+            >
+              Export report
+            </Button>
           </>
         }
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <StatGrid cols={4}>
         <StatCard
           label="Appointments"
           value={formatNumber(data.appointments.total)}
@@ -107,7 +139,7 @@ export default function ReportPage() {
           tone="danger"
           icon={<Percent className="h-5 w-5" />}
         />
-      </div>
+      </StatGrid>
 
       <div className="grid grid-cols-12 gap-5">
         <Card className="col-span-12 xl:col-span-7">
@@ -128,11 +160,11 @@ export default function ReportPage() {
               height={260}
               dualAxis
               series={[
-                { key: "revenue", label: "Revenue", color: "#4B66E9", axis: "left" },
+                { key: "revenue", label: "Revenue", color: chart.primary, axis: "left", format: "money" },
                 {
                   key: "appointments",
                   label: "Appointments",
-                  color: "#8ECC97",
+                  color: accent[400],
                   axis: "right",
                   format: "number",
                 },
@@ -148,7 +180,7 @@ export default function ReportPage() {
           </CardBody>
         </Card>
 
-        {showClinical ? (
+        {showClinical && data.clinical ? (
           <>
             <Card className="col-span-12 xl:col-span-5">
               <CardHeader
@@ -184,7 +216,7 @@ export default function ReportPage() {
                 subtitle="AAP / EFP 2018 classification across charted patients"
               />
               <CardBody className="pt-4">
-                <HorizontalBars data={data.clinical.perioStages} color="#E45689" />
+                <HorizontalBars data={data.clinical.perioStages} color={semantic.danger} />
 
                 <div className="mt-6 border-t border-slate-100 pt-4">
                   <Caption>Recall compliance</Caption>
@@ -230,4 +262,75 @@ export default function ReportPage() {
       </Card>
     </div>
   );
+}
+
+/**
+ * Export the report as a CSV.
+ *
+ * Built from the payload already on screen, so the file is definitionally what
+ * the reader is looking at. A server endpoint that rebuilt it would be a second
+ * implementation of every fold on this page, and the day the two disagreed both
+ * figures would be defensible.
+ *
+ * It honours the same permission split the screen does: a reader without
+ * `report:financial` gets no revenue column, because the server did not send
+ * them one and inventing a blank would imply the practice earned nothing.
+ */
+function exportReport(report, range, { showFinance, showClinical }) {
+  /* A detail string contains commas and a treatment name contains a quote, so
+     the same escaping the server's audit export uses. `rows.join(",")` produces
+     a file whose columns shift from the first such value onwards — wrong, and
+     it looks fine until somebody reconciles it. */
+  const escape = (value) => {
+    const text = value === null || value === undefined ? "" : String(value);
+    const needsQuotes =
+      text.includes(",") ||
+      text.includes('"') ||
+      text.includes(String.fromCharCode(10)) ||
+      text.includes(String.fromCharCode(13));
+    return needsQuotes ? `"${text.replace(/"/g, '""')}"` : text;
+  };
+
+  const rows = [
+    ["Odenta — practice report", `Last ${range} days`],
+    ["Generated", new Date().toISOString()],
+    [],
+    ["Metric", "Value", "Change %"],
+    ["Appointments", report.appointments.total, report.appointments.change ?? ""],
+    ...(showFinance && report.revenue ? [["Revenue", report.revenue.total, report.revenue.change ?? ""]] : []),
+    ["New patients", report.newPatients.total, report.newPatients.change ?? ""],
+    ["Chair utilisation %", report.utilisation.total, report.utilisation.change ?? ""],
+    [],
+    ["Treatment", "Procedures"],
+    ...report.byTreatment.map((row) => [row.name, row.value]),
+    [],
+    showFinance ? ["Dentist", "Appointments", "Revenue"] : ["Dentist", "Appointments"],
+    ...report.byDentist.map((row) =>
+      showFinance ? [row.name, row.appointments, row.revenue] : [row.name, row.appointments]
+    ),
+  ];
+
+  if (showClinical && report.clinical) {
+    rows.push(
+      [],
+      ["Caries risk", "Patients"],
+      ...report.clinical.cariesRiskSplit.map((slice) => [slice.name, slice.value]),
+      [],
+      ["Periodontal stage", "Patients"],
+      ...report.clinical.perioStages.map((stage) => [stage.name, stage.value]),
+      [],
+      ["Recall compliance %", report.clinical.recallCompliance ?? "not measured"]
+    );
+  }
+
+  const csv = rows.map((row) => row.map(escape).join(",")).join(String.fromCharCode(10));
+  const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
+
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `odenta-report-${range}d-${new Date().toISOString().slice(0, 10)}.csv`;
+  link.click();
+  /* Revoked on the next tick — Safari has not started the download by the time
+     the click handler returns. */
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }

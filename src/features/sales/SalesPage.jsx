@@ -1,5 +1,13 @@
 import { useState } from "react";
-import { CalendarRange, Download, Printer, Receipt, TrendingUp, Wallet } from "lucide-react";
+import {
+  CalendarRange,
+  Download,
+  PiggyBank,
+  Printer,
+  Receipt,
+  TrendingUp,
+  Wallet,
+} from "lucide-react";
 import { useAsync, useDisclosure } from "@/hooks";
 import { financeService } from "@/services";
 import { formatDate, formatMoney } from "@/lib/format";
@@ -11,7 +19,7 @@ import { Button, IconButton } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Avatar } from "@/components/ui/Avatar";
 import { SearchInput } from "@/components/ui/Misc";
-import { StatCard, Toolbar, toneFor } from "@/components/shared";
+import { StatCard, StatGrid, Toolbar, toneFor } from "@/components/shared";
 import { BillPaymentModal } from "./BillPaymentModal";
 
 function BillLines({ bill, onPay, canPay }) {
@@ -56,17 +64,39 @@ export default function SalesPage() {
   const [selected, setSelected] = useState(null);
   const payment = useDisclosure();
 
+  /**
+   * How many rows a tab loads at once.
+   *
+   * Named, because the tab badge has to know it. Both of these endpoints are
+   * bounded server-side — bills by a continuation token, payments by the month
+   * window — so a bare `bills.length` in the badge silently becomes a lie about
+   * the practice the moment there is more than one page of them, and it is a
+   * lie that looks entirely plausible. `PAGE_SIZE` lets the badge say "50+"
+   * instead of claiming there are exactly fifty.
+   */
+  const PAGE_SIZE = 50;
+
   const { data: summary } = useAsync(() => financeService.getSummary(), []);
   const { data: bills = [], loading, refetch } = useAsync(
-    () => financeService.getBills({ q: query }),
+    () => financeService.getBills({ q: query, limit: PAGE_SIZE }),
     [query],
     []
   );
   const { data: payments = [], refetch: refetchPayments } = useAsync(
-    () => financeService.getPayments({ q: query }),
+    () => financeService.getPayments({ q: query, limit: PAGE_SIZE }),
     [query],
     []
   );
+
+  /**
+   * A full page means there is probably another one behind it.
+   *
+   * Deliberately not a count query. The real "how much is still owed" figure is
+   * the Outstanding tile above, which the server answers with one aggregate —
+   * so paying for a second COUNT on every keystroke of the search box, to put
+   * an exact number on a tab, would be buying precision nobody acts on.
+   */
+  const badge = (rows) => (rows.length >= PAGE_SIZE ? `${PAGE_SIZE}+` : rows.length);
 
   const openPayment = (bill) => {
     setSelected(bill);
@@ -165,7 +195,7 @@ export default function SalesPage() {
           value={query}
           onChange={setQuery}
           placeholder="Search name or reservation ID…"
-          className="w-[300px]"
+          className="w-full sm:w-[300px]"
         />
       }
       right={
@@ -181,41 +211,39 @@ export default function SalesPage() {
 
   return (
     <div className="flex flex-col gap-5 px-6 pb-6 pt-5">
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <StatGrid cols={4}>
         <StatCard
           label="Revenue this month"
-          value={formatMoney(summary?.revenue.total ?? 0)}
-          change={summary?.revenue.change}
+          value={formatMoney(summary?.revenue?.total ?? 0)}
+          change={summary?.revenue?.change}
           icon={<TrendingUp className="h-5 w-5" />}
         />
         <StatCard
           label="Profit this month"
-          value={formatMoney(summary?.profit.total ?? 0)}
-          change={summary?.profit.change}
+          value={formatMoney(summary?.profit?.total ?? 0)}
+          change={summary?.profit?.change}
           tone="success"
           icon={<Wallet className="h-5 w-5" />}
         />
         <StatCard
           label="Outstanding"
-          value={formatMoney(summary?.outstanding.total ?? 0)}
-          change={summary?.outstanding.change}
+          value={formatMoney(summary?.outstanding?.total ?? 0)}
+          change={summary?.outstanding?.change}
           tone="danger"
           icon={<Receipt className="h-5 w-5" />}
         />
         <StatCard
-          label="Collected today"
-          value={formatMoney(summary?.collected.total ?? 0)}
-          change={summary?.collected.change}
-          tone="warning"
+          label="Collected today" value={formatMoney(summary?.collected?.total ?? 0)} change={summary?.collected?.change} tone="warning"
+          icon={<PiggyBank className="h-5 w-5" />}
         />
-      </div>
+      </StatGrid>
 
       <Tabs defaultValue="bill">
         <TabsList>
-          <TabsTrigger value="bill" badge={bills.length}>
+          <TabsTrigger value="bill" badge={badge(bills)}>
             Bill
           </TabsTrigger>
-          <TabsTrigger value="received" badge={payments.length}>
+          <TabsTrigger value="received" badge={badge(payments)}>
             Payment Received
           </TabsTrigger>
         </TabsList>

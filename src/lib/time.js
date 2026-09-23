@@ -1,5 +1,25 @@
 /** Calendar geometry helpers shared by the reservation board. */
 
+const DAY_MS = 86_400_000;
+
+/**
+ * Today, as the person in front of the screen would write it.
+ *
+ * `new Date().toISOString().slice(0, 10)` is UTC, so east of Greenwich it
+ * returns *yesterday* for the first hours after local midnight — long enough
+ * to make a clinic list look empty at 1am. Every screen that compares against
+ * a `YYYY-MM-DD` column should use this instead.
+ */
+export const toDateKey = (value = new Date()) => {
+  const date = value instanceof Date ? value : new Date(value);
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+  return local.toISOString().slice(0, 10);
+};
+
+/** `todayKey()` shifted by whole days, still in local time. */
+export const dateKeyOffset = (days, from = new Date()) =>
+  toDateKey(new Date((from instanceof Date ? from : new Date(from)).getTime() + days * DAY_MS));
+
 export const SLOT_START_HOUR = 8; // 8am
 export const SLOT_END_HOUR = 20; // 8pm
 export const SLOT_HEIGHT = 96; // px per hour

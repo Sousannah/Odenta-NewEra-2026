@@ -8,13 +8,14 @@ import {
   YAxis,
 } from "recharts";
 import { formatMoney, formatNumber } from "@/lib/format";
+import { chart } from "@/theme/tokens";
 
 const compact = (value) => (value >= 1000 ? `${value / 1000}K` : value);
 
 function BarTooltip({ active, payload, label, series }) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="rounded-xl bg-[#1E293B] px-3 py-2 text-white shadow-pop">
+    <div className="rounded-xl bg-ink px-3 py-2 text-white shadow-pop">
       <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-white/60">
         {label}
       </div>
@@ -29,7 +30,7 @@ function BarTooltip({ active, payload, label, series }) {
             />
             {meta?.label ?? entry.dataKey}
             <span className="ml-auto pl-3">
-              {meta?.format === "number" ? formatNumber(entry.value) : formatMoney(entry.value)}
+              {meta?.format === "money" ? formatMoney(entry.value) : formatNumber(entry.value)}
             </span>
           </div>
         );
@@ -40,6 +41,10 @@ function BarTooltip({ active, payload, label, series }) {
 
 /**
  * series: [{ key, label, color, format?: "money" | "number", axis?: "left" | "right" }]
+ *
+ * `format` defaults to "number" — most of these charts count things (visits,
+ * submissions, sign-ins) and a count rendered as currency is a lie the reader
+ * has no way to catch. A money series has to say so.
  * Pass `dualAxis` when the series live on very different scales (e.g. revenue
  * against a headcount) so the smaller bars stay readable.
  */
@@ -58,7 +63,7 @@ export function GroupedBarChart({
           margin={{ top: 8, right: dualAxis ? 4 : 4, bottom: 0, left: -22 }}
           barGap={4}
         >
-          <CartesianGrid vertical={false} stroke="#EEF2F7" strokeDasharray="2 6" />
+          <CartesianGrid vertical={false} stroke={chart.grid} strokeDasharray="2 6" />
           <XAxis dataKey={xKey} tickLine={false} axisLine={false} dy={6} />
           <YAxis
             yAxisId="left"

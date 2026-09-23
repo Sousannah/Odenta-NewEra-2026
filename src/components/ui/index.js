@@ -17,6 +17,13 @@ export { Modal, Drawer, ConfirmDialog } from "./Modal";
 export { DataTable } from "./DataTable";
 export { EmptyState } from "./EmptyState";
 export { Skeleton, CardSkeleton } from "./Skeleton";
+export {
+  OdentaLoader,
+  OdentaLoaderScreen,
+  OdentaLoaderPanel,
+  OdentaLoaderOverlay,
+  OdentaSpinner,
+} from "./OdentaLoader";
 export { Stepper, DotSteps, ProgressBar } from "./Stepper";
 export { Dropdown, StatusSelect } from "./Dropdown";
 export {

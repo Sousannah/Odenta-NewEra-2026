@@ -13,13 +13,8 @@ import { SegmentedControl } from "@/components/ui/Tabs";
 import { IconButton } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
-import {
-  DEFAULT_LEGEND,
-  Odontogram,
-  OdontogramLegend,
-  formatSurfaces,
-  toothFullName,
-} from "@/components/dental";
+import { formatSurfaces, toothFullName } from "@/components/dental";
+import { ToothChart } from "@/odontogram";
 import { conditionByValue } from "@/config/dentalStandards";
 
 /* --------------------------------------------------------------- shell */
@@ -82,7 +77,14 @@ export function chartToFindings(chart = []) {
 
 /* ----------------------------------------------------- medical record ---- */
 
-export function MedicalRecordPanel({ chart = [], onClose }) {
+/**
+ * The chart, at a glance, beside an appointment.
+ *
+ * Same chart as the record tab — the compact, read-only variant of it: the
+ * drawing without the top bar or the control panel. Charting happens on the
+ * record, or chairside in the checkup; this is here to be read.
+ */
+export function MedicalRecordPanel({ odontogram = null, chart = [], onClose }) {
   const [service, setService] = useState("medical");
 
   const filtered = useMemo(
@@ -94,8 +96,6 @@ export function MedicalRecordPanel({ chart = [], onClose }) {
       ),
     [chart, service]
   );
-
-  const findings = useMemo(() => chartToFindings(filtered), [filtered]);
 
   return (
     <SidePanel title="Medical Record" onClose={onClose}>
@@ -110,13 +110,14 @@ export function MedicalRecordPanel({ chart = [], onClose }) {
         />
       </div>
 
-      <div className="mx-auto mt-4 max-w-[420px]">
-        <Odontogram
-          findings={findings}
-          readOnly
-          surfaceMode
-          legend={<OdontogramLegend items={DEFAULT_LEGEND} />}
-        />
+      <div className="mt-4">
+        {odontogram ? (
+          <ToothChart variant="compact" readOnly value={odontogram} />
+        ) : (
+          <p className="rounded-xl border border-dashed border-slate-200 px-4 py-6 text-center text-[12.5px] text-ink-soft">
+            No tooth chart on this record yet.
+          </p>
+        )}
       </div>
 
       {filtered.length ? (
@@ -161,8 +162,8 @@ export function MedicalRecordPanel({ chart = [], onClose }) {
 /* -------------------------------------------------------- attachments ---- */
 
 const THUMB_TONE = {
-  image: "bg-[#D9F7F1] text-[#0E9F8A]",
-  pdf: "bg-[#FDE2E4] text-[#D5364C]",
+  image: "bg-accent-50 text-accent-700",
+  pdf: "bg-danger-soft text-danger-ink",
 };
 
 export function AttachmentPanel({ attachments = [], onClose }) {

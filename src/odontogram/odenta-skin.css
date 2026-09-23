@@ -1,0 +1,551 @@
+/**
+ * Odenta skin for the vendored odontogram.
+ *
+ * `lib/index.css` ships the module's own look. This sheet is loaded after it
+ * and re-dresses the chrome — typography, radii, borders, shadows, the accent
+ * palette — in the Odenta design system, without touching the clinical colours
+ * (caries reds, inflammation oranges, restoration blues). Those encode
+ * diagnosis, not brand, and must stay as the module drew them.
+ *
+ * Everything is scoped to `.odontogram-root`, so nothing here can reach the
+ * host app; and every value traces back to `tailwind.config.js` /
+ * `src/theme/tokens.js` rather than being a new hex.
+ */
+
+.odontogram-root {
+  /* --- the eight keys `applyThemeConfig` writes, as CSS defaults ---------- */
+  --odon-bg: transparent;
+  --odon-panel: #ffffff;
+  --odon-card: #ffffff;
+  --odon-text: #0f2e3d; /* ink */
+  --odon-muted: #4a6b7c; /* ink-muted */
+  --odon-line: #e2ecf2; /* surface.line */
+  --odon-accent: #0077b6; /* brand-600 */
+  --odon-accent2: #20b2aa; /* accent-500 */
+
+  /* --- the rgb triplets the tint rules in lib/index.css resolve through --- */
+  --odon-accent-rgb: 0, 119, 182;
+  --odon-accent2-rgb: 32, 178, 170;
+
+  /* `.pill` and the credits links read --brand, which the module never sets. */
+  --brand: #0077b6;
+
+  /* Odenta surfaces */
+  --od-ink-soft: #7e97a5;
+  --od-line-soft: #eff5f9;
+  --od-shadow-card: 0 1px 2px rgba(15, 46, 61, 0.04), 0 1px 3px rgba(15, 46, 61, 0.06);
+  --od-shadow-pop: 0 12px 32px -8px rgba(15, 46, 61, 0.18), 0 4px 8px -4px rgba(15, 46, 61, 0.08);
+  --od-radius: 16px;
+  --od-radius-sm: 12px;
+
+  /* How tall the scrolling control panel may get. The host overrides this per
+     surface (a full page gets the viewport, a modal gets the modal). */
+  --odon-panel-max-h: calc(100vh - 260px);
+
+  font-family: Manrope, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  background: transparent;
+  color: var(--od-text, #0f2e3d);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ------------------------------------------------------------ typography */
+
+.odontogram-root .title,
+.odontogram-root .card-title,
+.odontogram-root .panel-title,
+.odontogram-root .chart-title,
+.odontogram-root .odon-settings-title,
+.odontogram-root .perio-overlay-title,
+.odontogram-root .odon-credits-title {
+  font-family: "Plus Jakarta Sans", Manrope, ui-sans-serif, system-ui, sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: #0f2e3d;
+}
+
+.odontogram-root .subtitle,
+.odontogram-root .card-subtitle,
+.odontogram-root .panel-subtitle,
+.odontogram-root .hint,
+.odontogram-root .chart-hint {
+  color: #4a6b7c;
+}
+
+/* ---------------------------------------------------------- app surfaces */
+
+/* The module's topbar was written for a standalone page: sticky, full-bleed,
+   frosted. Embedded in an Odenta shell it becomes the card header of the
+   charting surface. */
+.odontogram-root .topbar {
+  position: static;
+  padding: 12px 16px;
+  border: 1px solid var(--odon-line);
+  border-radius: var(--od-radius);
+  background: #ffffff;
+  box-shadow: var(--od-shadow-card);
+  backdrop-filter: none;
+}
+
+.odontogram-root .brand-logo {
+  height: 34px;
+  border-radius: 8px;
+}
+
+.odontogram-root .layout {
+  padding: 14px 0 0;
+  gap: 16px;
+}
+
+.odontogram-root .card,
+.odontogram-root .chart,
+.odontogram-root .panel {
+  background: #ffffff;
+  border: 1px solid var(--odon-line);
+  border-radius: var(--od-radius);
+  box-shadow: var(--od-shadow-card);
+}
+
+.odontogram-root .card {
+  border-radius: var(--od-radius-sm);
+  box-shadow: none;
+  background: #fbfdfe;
+}
+
+.odontogram-root .chart-header,
+.odontogram-root .panel-header {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--od-line-soft);
+  background: #ffffff;
+}
+
+.odontogram-root .panel-body {
+  padding: 16px;
+  max-height: var(--odon-panel-max-h);
+}
+
+.odontogram-root .divider {
+  background: var(--od-line-soft);
+}
+
+/* --------------------------------------------------------------- buttons */
+
+.odontogram-root .btn {
+  border-radius: var(--od-radius-sm);
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  color: #0f2e3d;
+  font-weight: 600;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.odontogram-root .btn:hover {
+  background: #f1f7fb;
+  border-color: #cfe3ef;
+}
+
+.odontogram-root .btn.is-primary,
+.odontogram-root .btn-primary {
+  background: #0077b6;
+  border-color: transparent;
+  color: #ffffff;
+}
+
+.odontogram-root .btn.is-primary:hover,
+.odontogram-root .btn-primary:hover {
+  background: #00639a;
+}
+
+.odontogram-root .btn-ghost {
+  background: transparent;
+  border-color: transparent;
+  color: #4a6b7c;
+}
+
+.odontogram-root .btn-ghost:hover {
+  background: #eef5f9;
+  color: #0f2e3d;
+}
+
+.odontogram-root .btn-danger {
+  background: #fdecef;
+  border-color: rgba(228, 87, 107, 0.32);
+  color: #9e2438;
+}
+
+.odontogram-root .btn-danger:hover {
+  background: #fbdde2;
+}
+
+.odontogram-root .btn-theme,
+.odontogram-root .icon-btn {
+  border-radius: var(--od-radius-sm);
+  border: 1px solid transparent;
+  background: transparent;
+  color: #4a6b7c;
+}
+
+.odontogram-root .btn-theme:hover,
+.odontogram-root .icon-btn:hover {
+  background: #eef5f9;
+  border-color: #dceaf2;
+  color: #0077b6;
+}
+
+.odontogram-root .btn-toggle[aria-pressed="true"] {
+  background: rgba(0, 119, 182, 0.12);
+  border-color: rgba(0, 119, 182, 0.4);
+  color: #00639a;
+}
+
+/* Focus ring — Odenta's `od-focus`, as plain CSS. */
+.odontogram-root button:focus-visible,
+.odontogram-root a:focus-visible,
+.odontogram-root select:focus-visible,
+.odontogram-root input:focus-visible,
+.odontogram-root textarea:focus-visible,
+.odontogram-root [tabindex]:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(0, 119, 182, 0.2);
+  border-radius: 10px;
+}
+
+/* ------------------------------------------------------ segmented toggle */
+
+.odontogram-root .chart-mode-toggle {
+  border: 1px solid var(--odon-line);
+  background: #f3f8fb;
+  padding: 4px;
+}
+
+.odontogram-root .chart-mode-btn.is-active {
+  background: #ffffff;
+  color: #00639a;
+  box-shadow: var(--od-shadow-card);
+}
+
+/* ---------------------------------------------------------------- inputs */
+
+.odontogram-root select,
+.odontogram-root .odon-settings-select,
+.odontogram-root .case-meta-select,
+.odontogram-root .case-meta-input,
+.odontogram-root .odon-settings-input,
+.odontogram-root .odon-settings-textarea,
+.odontogram-root .odon-note-textarea,
+.odontogram-root .perio-fullgrid-input {
+  border-radius: 10px;
+  border: 1px solid #dbe7ef;
+  background-color: #ffffff;
+  color: #0f2e3d;
+  font-family: inherit;
+}
+
+.odontogram-root select {
+  background-color: #f7fbfd;
+}
+
+.odontogram-root select:focus {
+  box-shadow: 0 0 0 4px rgba(0, 119, 182, 0.18);
+  border-color: #6fbce7;
+}
+
+/* ------------------------------------------------------------ tooth grid */
+
+.odontogram-root .tooth-tile {
+  border-radius: var(--od-radius-sm);
+  border-color: #e6eff5;
+  background: #ffffff;
+}
+
+.odontogram-root .tooth-tile:hover {
+  border-color: #a6d6f1;
+  background: #f7fbfd;
+}
+
+.odontogram-root .tooth-label-cell,
+.odontogram-root .tooth-label-row {
+  color: #4a6b7c;
+  font-weight: 700;
+}
+
+/* ------------------------------------------------------- dropdown / menu */
+
+.odontogram-root .dropdown-menu,
+.odontogram-root .odon-ctx-menu,
+.odontogram-root .settings-menu,
+.odontogram-root .odon-depth-popup,
+.odontogram-root .perio-info-popover,
+.odontogram-root .odon-note-popover {
+  border-radius: 14px;
+  border: 1px solid var(--odon-line);
+  box-shadow: var(--od-shadow-pop);
+}
+
+.odontogram-root .dropdown-item,
+.odontogram-root .odon-ctx-item {
+  border-radius: 10px;
+  border-color: transparent;
+  background: transparent;
+  color: #0f2e3d;
+  font-weight: 600;
+}
+
+.odontogram-root .dropdown-item:hover,
+.odontogram-root .odon-ctx-item:hover {
+  background: #eef5f9;
+}
+
+.odontogram-root .dropdown-item[aria-checked="true"] {
+  background: rgba(0, 119, 182, 0.12);
+  border-color: rgba(0, 119, 182, 0.35);
+  color: #00639a;
+}
+
+/* ---------------------------------------------------------------- modals */
+
+.odontogram-root .odon-settings-modal,
+.odontogram-root .odon-confirm-modal,
+.odontogram-root .odon-credits-modal,
+.odontogram-root .odon-export-card,
+.odontogram-root .perio-overlay-panel,
+.odontogram-root .odon-zoom-popover {
+  border-radius: 20px;
+  border: 1px solid var(--odon-line);
+  box-shadow: 0 32px 80px -24px rgba(15, 46, 61, 0.45);
+}
+
+.odontogram-root .odon-settings-backdrop,
+.odontogram-root .odon-confirm-backdrop,
+.odontogram-root .odon-note-backdrop,
+.odontogram-root .perio-overlay,
+.odontogram-root .odon-zoom-overlay,
+.odontogram-root .odon-export-overlay {
+  background: rgba(15, 46, 61, 0.42);
+  backdrop-filter: blur(2px);
+}
+
+.odontogram-root .odon-settings-tab.is-active,
+.odontogram-root .odon-settings-tab[aria-selected="true"] {
+  background: rgba(0, 119, 182, 0.12);
+  color: #00639a;
+}
+
+/* --------------------------------------------------------------- pills */
+
+.odontogram-root .pill {
+  background: rgba(32, 178, 170, 0.14);
+  border-color: rgba(32, 178, 170, 0.3);
+  color: #107c76;
+}
+
+.odontogram-root .plan-badge {
+  background: rgba(245, 166, 35, 0.16);
+  border-color: rgba(245, 166, 35, 0.4);
+  color: #8c6103;
+}
+
+/* --------------------------------------------------------- perio charts */
+
+.odontogram-root .perio-fullgrid-header-cell,
+.odontogram-root .perio-fullgrid-row-label,
+.odontogram-root .perio-site-label {
+  color: #4a6b7c;
+  font-weight: 700;
+}
+
+.odontogram-root .perio-summary-card,
+.odontogram-root .perio-block {
+  border-radius: var(--od-radius-sm);
+  border-color: var(--odon-line);
+  background: #fbfdfe;
+}
+
+/* ------------------------------------------------------------------ RTL */
+
+/* Arabic mirrors the surrounding UI; the charts themselves stay LTR because
+   FDI quadrant order is anatomical, not textual. The module already pins
+   `dir="ltr"` on the chart columns — this only softens the chrome. */
+.odontogram-root[dir="rtl"] .topbar,
+.odontogram-root[dir="rtl"] .panel-header,
+.odontogram-root[dir="rtl"] .chart-header {
+  text-align: right;
+}
+
+/* ---------------------------------------------------------------- print */
+
+@media print {
+  .odontogram-root .topbar,
+  .odontogram-root .chart-actions,
+  .odontogram-root .perio-launch-bar {
+    display: none !important;
+  }
+
+  .odontogram-root .layout {
+    display: block;
+    padding: 0;
+  }
+
+  .odontogram-root .panel-body {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .odontogram-root .chart,
+  .odontogram-root .panel,
+  .odontogram-root .card {
+    box-shadow: none !important;
+    break-inside: avoid;
+  }
+}
+
+/* =========================================================================
+   Embedding — what changes because the chart lives inside an Odenta screen
+   rather than owning a browser tab.
+   ========================================================================= */
+
+.odenta-odontogram {
+  width: 100%;
+  min-width: 0;
+}
+
+/* Odenta is a light-only product, so a chart that could flip itself dark
+   inside a light shell would just look broken. `ToothChart` pins
+   `darkMode={false}`; this removes the control that would no longer do
+   anything. The module's dark stylesheet stays in place, untouched, for
+   whenever Odenta grows a dark theme of its own. */
+.odenta-odontogram #btnDarkModeToggle {
+  display: none;
+}
+
+/* The module's own brand block ("React Advanced Odontogram" and its status
+   line) and its "view on GitHub" link belong to the demo page, not to a chart
+   inside a patient record — the host screen already says what this is. What
+   remains of the top bar is the row of actions. Attribution moves to the
+   About-and-credits dialog, which is still one click away. */
+.odenta-odontogram .topbar .brand,
+.odenta-odontogram #btnGithubLink {
+  display: none;
+}
+
+.odenta-odontogram .topbar {
+  justify-content: flex-end;
+}
+
+/* ------------------------------------------------------- compact variant */
+
+/* Chart only: no top bar, no control panel, one column. Used for the
+   read-only previews in side panels and dossiers, where the chart is
+   something to look at rather than something to edit. Rendering the full
+   shell and hiding the chrome (rather than composing a smaller tree) keeps
+   every control node the engine wires itself to present in the DOM. */
+.odenta-odontogram--compact .topbar,
+.odenta-odontogram--compact .panel,
+.odenta-odontogram--compact .perio-launch-bar,
+.odenta-odontogram--compact .chart-actions {
+  display: none !important;
+}
+
+.odenta-odontogram--compact .layout {
+  grid-template-columns: 1fr;
+  padding: 0;
+  gap: 0;
+}
+
+.odenta-odontogram--compact .chart-column {
+  grid-column: 1 / -1;
+}
+
+.odenta-odontogram--compact .tooth-info {
+  display: none;
+}
+
+/* Nothing in a read-only preview is a control: the Status/Plan switch, the
+   "click a tooth" hint and the proposed-treatment legend all describe editing
+   that cannot happen here. */
+.odenta-odontogram--compact .chart-mode-toggle,
+.odenta-odontogram--compact .chart-hint,
+.odenta-odontogram--compact .proposed-legend {
+  display: none !important;
+}
+
+/* The grid needs 16 × 36px before it starts shrinking, which is wider than the
+   side panels this variant lives in — so it scrolls sideways inside the card
+   rather than being clipped by it. */
+.odenta-odontogram--compact .chart {
+  overflow-x: auto;
+  overflow-y: hidden;
+  box-shadow: none;
+}
+
+/* --------------------------------------------------------- read-only cue */
+
+/* The engine already blocks the interactions; this stops the surface from
+   inviting them. */
+.odenta-odontogram--readonly .tooth-tile {
+  cursor: default;
+}
+
+.odenta-odontogram--readonly .tooth-tile:hover {
+  border-color: #e6eff5;
+  background: #ffffff;
+}
+
+/* --------------------------------------------------------- narrow screens */
+
+/* The module's two-column layout assumes a full browser window. Inside an
+   Odenta shell the sidebar takes 264px before the chart gets any, so the
+   control panel drops under the chart rather than squeezing it — a squeezed
+   tooth grid is unreadable, and reading the grid is the point. */
+@media (max-width: 1280px) {
+  .odenta-odontogram .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .odenta-odontogram .panel {
+    grid-column: 1;
+  }
+
+  .odenta-odontogram .panel-body {
+    max-height: none;
+  }
+}
+
+/* -------------------------------------------------------------- on a phone
+
+   The arch pans instead of being cut off.
+
+   Thirty-two teeth, a surface picker and a condition palette have a width
+   below which the chart stops being readable, and no amount of stacking makes
+   an upper and lower arch legible at 375px. So on a narrow screen the chart
+   keeps its own width and scrolls sideways inside its own box: every tooth
+   stays reachable and the page around it does not move. Applied at the root
+   class rather than per screen, because the same chart is mounted from six
+   places — the student's record, the dentist's patient, the checkup modal,
+   the reservation panel, the case detail and the supervisor's dossier — and
+   five of them would have been forgotten.
+
+   `touch-action: pan-x pan-y` matters as much as the overflow: without it a
+   swipe that starts on a tooth is swallowed by the tile's pointer handlers
+   and the chart cannot be panned at all. */
+@media (max-width: 767px) {
+  .odenta-odontogram {
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-x pan-y;
+  }
+
+  .odenta-odontogram > * {
+    min-width: 720px;
+  }
+
+  /* The compact variant is already a single column of tiles and fits, so it
+     keeps the page's own scrolling rather than growing a second axis. */
+  .odenta-odontogram--compact {
+    overflow-x: visible;
+  }
+
+  .odenta-odontogram--compact > * {
+    min-width: 0;
+  }
+}

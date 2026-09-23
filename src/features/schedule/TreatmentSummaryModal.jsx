@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ChevronUp, Pill, Plus, Trash2, Wrench } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { useAsync } from "@/hooks";
+import { clinicService } from "@/services";
 import { formatMoney } from "@/lib/format";
 import { useToast } from "@/components/ui/Toast";
 import { Modal } from "@/components/ui/Modal";
@@ -8,30 +10,31 @@ import { Button } from "@/components/ui/Button";
 import { Checkbox, Select } from "@/components/ui/Field";
 import { Counter, InfoBanner } from "@/components/ui/Misc";
 
-const DEFAULT_SUMMARY = [
-  {
-    id: "sum-1",
-    treatment: "Tooth Filling",
-    price: 220,
-    teeth: [
-      { id: 18, label: "2nd Molars (18)" },
-      { id: 19, label: "3rd Molars (19)" },
-    ],
-    components: [
-      { id: "c1", name: "Anesthetic", note: "Include in service", qty: 1, left: 200, free: 0 },
-      {
-        id: "c2",
-        name: "Composite Porseline",
-        note: "Free component item: 3, Additional component item: 2",
-        qty: 5,
-        left: 3123,
-        free: 3,
-      },
-    ],
-    medicine: [{ id: "m1", name: "Asam Menefamat", qty: 1, left: 214, paid: true }],
-  },
-];
+/**
+ * This dialog used to open pre-filled with an invented treatment.
+ *
+ * `DEFAULT_SUMMARY` was a hand-written record — "Tooth Filling", £220, two
+ * teeth, an anaesthetic with 200 in stock, a composite with 3,123 — and
+ * `ReservationDrawer` never passed a `summary` prop, so the default was what
+ * every clinic user saw. Pressing Save then announced "Bill is ready for
+ * payment" over numbers nobody had entered and no record contained.
+ *
+ * The line items now come from the practice's own treatment catalogue
+ * (`GET /api/treatments`, priced in Cosmos), matched on the `treatmentId` the
+ * appointment already carries. Nothing is invented: a visit with no treatment
+ * on it opens empty and says so, which is a truthful screen rather than a
+ * convenient one.
+ */
 
+/**
+ * A picker list, not a record — and the one thing on this screen still not
+ * server-backed, because there is no formulary endpoint to back it with.
+ *
+ * Distinct from the invented line items that used to sit above it: nothing here
+ * claims a patient was given anything. It is the set of options a dentist may
+ * choose from, and the moment `/api/clinic/formulary` exists this becomes a
+ * fetch. Left visible rather than quietly removed so the gap is findable.
+ */
 const MEDICINE_OPTIONS = ["Asam Menefamat", "Amoxicillin", "Paracetamol", "Chlorhexidine rinse"];
 
 function Section({ icon, title, subtitle, children, action }) {
@@ -52,12 +55,59 @@ function Section({ icon, title, subtitle, children, action }) {
   );
 }
 
-export function TreatmentSummaryModal({ open, onClose, appointment, summary = DEFAULT_SUMMARY, onSaved }) {
-  const [items, setItems] = useState(() =>
-    summary.map((item) => ({ ...item, treatment: appointment?.treatment ?? item.treatment }))
-  );
+export function TreatmentSummaryModal({ open, onClose, appointment, summary, onSaved }) {
+  const [items, setItems] = useState([]);
   const [collapsed, setCollapsed] = useState({});
   const toast = useToast();
+
+  /**
+   * The practice's own catalogue, for the price.
+   *
+   * Fetched rather than assumed, because the price on a treatment is the
+   * practice's to set and the banner below asks the operator to enter "the
+   * nominal price according to the treatment price listed" — so the listed
+   * price is exactly what should already be in the box.
+   */
+  const { data: catalogue } = useAsync(
+    () => (open ? clinicService.getTreatments({ limit: 200 }) : Promise.resolve(null)),
+    [open]
+  );
+
+  /**
+   * Built when the dialog opens, from the visit and the catalogue.
+   *
+   * A caller may still pass `summary` explicitly — that is the seam for a
+   * saved draft once there is an endpoint to load one from. What there is no
+   * longer is a *default* that invents a treatment when nobody passed anything.
+   */
+  useEffect(() => {
+    if (!open) return;
+
+    if (summary) {
+      setItems(summary);
+      return;
+    }
+
+    if (!appointment?.treatmentId && !appointment?.treatmentName) {
+      setItems([]);
+      return;
+    }
+
+    const rows = Array.isArray(catalogue) ? catalogue : (catalogue?.items ?? catalogue?.rows ?? []);
+    const listed = rows.find((row) => row.id === appointment.treatmentId) ?? null;
+
+    setItems([
+      {
+        id: appointment.treatmentId ?? "item-1",
+        treatment: listed?.name ?? appointment.treatmentName ?? appointment.treatment ?? "Treatment",
+        /* The listed price, or blank — never a number nobody chose. */
+        price: listed?.price ?? "",
+        teeth: [],
+        components: [],
+        medicine: [],
+      },
+    ]);
+  }, [open, appointment, catalogue, summary]);
 
   const patch = (itemId, updater) =>
     setItems((prev) => prev.map((item) => (item.id === itemId ? updater(item) : item)));
@@ -91,6 +141,16 @@ export function TreatmentSummaryModal({ open, onClose, appointment, summary = DE
       <InfoBanner tone="info">
         Please enter the nominal price according to the treatment price listed.
       </InfoBanner>
+
+      {items.length === 0 ? (
+        /* No treatment on the visit, so nothing to bill for. Said plainly rather
+           than pre-filled with something plausible — a summary that invents a
+           line item is a bill that invents a charge. */
+        <p className="mt-6 rounded-xl border border-dashed border-slate-200 px-4 py-6 text-center text-[13px] text-ink-soft">
+          No treatment is recorded on this visit yet. Add one to the appointment
+          first, and its listed price will appear here.
+        </p>
+      ) : null}
 
       {items.map((item) => {
         const expanded = !collapsed[item.id];

@@ -62,7 +62,7 @@ export default function AuditPage() {
   ];
 
   return (
-    <div className="flex flex-col gap-5 p-6">
+    <div className="flex flex-col gap-4 p-4 sm:gap-5 sm:p-6">
       <PageHeader
         title="Audit log"
         description="Who touched what, and when. Retained for compliance review."
@@ -79,7 +79,7 @@ export default function AuditPage() {
             value={query}
             onChange={setQuery}
             placeholder="Search actor, action or entity…"
-            className="w-[340px]"
+            className="w-full sm:w-[340px]"
           />
         }
       />

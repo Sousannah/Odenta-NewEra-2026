@@ -1,66 +1,71 @@
-import { useMemo } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import { ClipboardList, FlaskConical, Play, Stethoscope, UserCheck } from "lucide-react";
 import { useAsync } from "@/hooks";
-import { analyticsService, labService, scheduleService } from "@/services";
+import { clinicalService } from "@/services";
 import { formatDate, formatNumber } from "@/lib/format";
 import { ROLES } from "@/auth/roles";
 import { LAB_CASE_STAGES } from "@/config/dentalStandards";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
-import { CardSkeleton } from "@/components/ui/Skeleton";
+import { OdentaLoaderPanel } from "@/components/ui/OdentaLoader";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { DashboardShell, AppointmentList, toneFor } from "@/components/shared";
 import { GroupedBarChart, HorizontalBars } from "@/components/charts";
 import { formatTeeth } from "@/components/dental";
+import { app } from "@/config/paths";
 
 /**
  * Dentist.
  *
- * The chair-side view: who is next, what is planned for them, what still
- * needs consent, which lab work is due, and what was prescribed.
+ * The chair-side view: who is next, what is planned for them, what still needs
+ * consent, which lab work is due, and what the chair produced this week.
+ *
+ * ## One request, not three
+ *
+ * This screen used to make three calls and do the arithmetic in the browser: a
+ * dashboard payload, the day's appointments, and *every lab case in the
+ * practice* — filtered client-side to this dentist's open ones. The third grew
+ * with the practice and was downloaded in full to render a count.
+ *
+ * It is now one call to `/dentist/board`. The server reads one visit lane, one
+ * lab lane and one indexed plan query, folds them, and returns the tiles and
+ * the lists together. Nothing on this screen is derived from a list the client
+ * had to download first, which is why it costs the same in year five as in
+ * month one.
+ *
+ * The tile numbers come from the server too, rather than from `.filter().length`
+ * over the lists below them. That is not only cheaper — it is what stops the
+ * tile and the list disagreeing when one of them is paged or truncated.
  */
 export default function DentistDashboard() {
   const { user } = useOutletContext() ?? {};
   const navigate = useNavigate();
-  const dentistId = user?.staffId;
-  const todayIso = new Date().toISOString().slice(0, 10);
 
-  const { data, loading } = useAsync(() => analyticsService.getDashboard(ROLES.DENTIST), []);
-  const { data: appointments = [] } = useAsync(
-    () => scheduleService.getAppointments({ date: todayIso, dentistId: dentistId ?? "all" }),
-    [dentistId],
-    []
-  );
-  const { data: labCases = [] } = useAsync(
-    () => labService.getLabCases({ dentistId: dentistId ?? "all" }),
-    [dentistId],
-    []
-  );
+  const { data: board, loading, error } = useAsync(() => clinicalService.getDentistBoard(), []);
 
-  const nextPatient = useMemo(
-    () =>
-      appointments
-        .filter((item) => ["registered", "arrived", "encounter"].includes(item.status))
-        .sort((a, b) => a.start.localeCompare(b.start))[0] ?? null,
-    [appointments]
-  );
+  if (loading) return <OdentaLoaderPanel />;
 
-  const dueLabCases = labCases.filter((item) =>
-    ["sent", "in_production", "try_in", "remake"].includes(item.stage)
-  );
-
-  if (loading || !data) {
+  /**
+   * A board that failed to load says so.
+   *
+   * The version this replaced rendered `<OdentaLoaderPanel />` forever on an
+   * error, because it only ever checked `loading || !data` — so a 403 from a
+   * login with no clinical identity looked identical to a slow network.
+   */
+  if (error || !board) {
     return (
-      <div className="grid grid-cols-12 gap-5 p-6">
-        <CardSkeleton className="col-span-12 xl:col-span-7" />
-        <CardSkeleton className="col-span-12 xl:col-span-5" />
+      <div className="p-6">
+        <EmptyState
+          title="Could not load your board"
+          description={error?.message ?? "Try again in a moment."}
+          className="py-16"
+        />
       </div>
     );
   }
 
-  const { kpis, productionSeries, caseMix } = data;
+  const { kpis, appointments = [], labCases = [], nextPatient, productionSeries, caseMix } = board;
 
   return (
     <DashboardShell
@@ -69,19 +74,37 @@ export default function DentistDashboard() {
       subtitle={user?.title ?? "Clinical"}
       actions={
         <>
-          <Button variant="secondary" leftIcon={<ClipboardList className="h-4 w-4" />} onClick={() => navigate("/treatment-plans")}>
+          <Button
+            variant="secondary"
+            leftIcon={<ClipboardList className="h-4 w-4" />}
+            onClick={() => navigate(app.treatmentPlans)}
+          >
             Treatment plans
           </Button>
-          <Button leftIcon={<Stethoscope className="h-4 w-4" />} onClick={() => navigate("/schedule")}>
+          <Button leftIcon={<Stethoscope className="h-4 w-4" />} onClick={() => navigate(app.schedule)}>
             My chair
           </Button>
         </>
       }
       kpis={[
-        { label: "Patients today", value: formatNumber(appointments.length), icon: <UserCheck className="h-5 w-5" /> },
-        { label: "Completed", value: formatNumber(appointments.filter((a) => ["finished", "waiting"].includes(a.status)).length), tone: "success" },
-        { label: "Awaiting consent", value: formatNumber(kpis.plansAwaitingConsent.total), tone: "warning", icon: <ClipboardList className="h-5 w-5" /> },
-        { label: "Lab cases due", value: formatNumber(dueLabCases.length), tone: "danger", icon: <FlaskConical className="h-5 w-5" /> },
+        {
+          label: "Patients today",
+          value: formatNumber(kpis.todayPatients.total),
+          icon: <UserCheck className="h-5 w-5" />,
+        },
+        { label: "Completed", value: formatNumber(kpis.completed.total), tone: "success" },
+        {
+          label: "Awaiting consent",
+          value: formatNumber(kpis.plansAwaitingConsent.total),
+          tone: "warning",
+          icon: <ClipboardList className="h-5 w-5" />,
+        },
+        {
+          label: "Lab cases due",
+          value: formatNumber(kpis.labCasesDue.total),
+          tone: "danger",
+          icon: <FlaskConical className="h-5 w-5" />,
+        },
       ]}
     >
       {nextPatient ? (
@@ -100,7 +123,7 @@ export default function DentistDashboard() {
           <Button
             size="lg"
             leftIcon={<Play className="h-4 w-4" />}
-            onClick={() => navigate(`/patients/${nextPatient.patientId}`)}
+            onClick={() => navigate(app.patient(nextPatient.patientId))}
           >
             Open chart
           </Button>
@@ -113,7 +136,7 @@ export default function DentistDashboard() {
             title="My list today"
             subtitle={`${appointments.length} appointment(s)`}
             action={
-              <Button variant="link" size="sm" onClick={() => navigate("/schedule")}>
+              <Button variant="link" size="sm" onClick={() => navigate(app.schedule)}>
                 Full schedule
               </Button>
             }
@@ -121,12 +144,12 @@ export default function DentistDashboard() {
           <CardBody className="pt-1">
             <AppointmentList
               appointments={appointments}
-              onSelect={(item) => navigate(`/patients/${item.patientId}`)}
+              onSelect={(item) => navigate(app.patient(item.patientId))}
               renderAction={(item) => (
                 <Button
                   variant="secondary"
                   size="xs"
-                  onClick={() => navigate(`/patients/${item.patientId}`)}
+                  onClick={() => navigate(app.patient(item.patientId))}
                 >
                   Chart
                 </Button>
@@ -145,8 +168,8 @@ export default function DentistDashboard() {
               xKey="day"
               height={230}
               series={[
-                { key: "production", label: "Production", color: "#4B66E9" },
-                { key: "target", label: "Target", color: "#CBD5E1" },
+                { key: "production", label: "Production", color: "#4B66E9", format: "money" },
+                { key: "target", label: "Target", color: "#CBD5E1", format: "money" },
               ]}
             />
           </CardBody>
@@ -155,26 +178,38 @@ export default function DentistDashboard() {
         <Card className="col-span-12 xl:col-span-5">
           <CardHeader title="Case mix" subtitle="Procedures this month" />
           <CardBody className="pt-4">
-            <HorizontalBars data={caseMix} />
+            {caseMix?.length ? (
+              <HorizontalBars data={caseMix} />
+            ) : (
+              <EmptyState
+                title="Nothing delivered yet this month"
+                description="The mix builds as treatment is completed."
+                className="py-8"
+              />
+            )}
           </CardBody>
         </Card>
 
         <Card className="col-span-12 xl:col-span-7">
           <CardHeader
             title="Lab cases"
-            subtitle={`${dueLabCases.length} case(s) in flight`}
+            subtitle={`${labCases.length} case(s) in flight`}
             action={
-              <Button variant="link" size="sm" onClick={() => navigate("/lab-cases")}>
+              <Button variant="link" size="sm" onClick={() => navigate(app.labCases)}>
                 All cases
               </Button>
             }
           />
           <CardBody className="pt-2">
-            {dueLabCases.length === 0 ? (
-              <EmptyState title="No open lab work" description="Every case has been fitted." className="py-10" />
+            {labCases.length === 0 ? (
+              <EmptyState
+                title="No open lab work"
+                description="Every case has been fitted."
+                className="py-10"
+              />
             ) : (
               <ul className="flex flex-col gap-2.5">
-                {dueLabCases.map((item) => {
+                {labCases.map((item) => {
                   const stage = LAB_CASE_STAGES.find((entry) => entry.value === item.stage);
                   return (
                     <li
@@ -186,7 +221,7 @@ export default function DentistDashboard() {
                           {item.type} · {item.patientName}
                         </span>
                         <span className="block truncate text-[12px] text-ink-soft">
-                          {item.teeth.length ? `Teeth ${formatTeeth(item.teeth)} · ` : ""}
+                          {item.teeth?.length ? `Teeth ${formatTeeth(item.teeth)} · ` : ""}
                           {item.labName} · due {formatDate(item.dueAt, "d MMM")}
                         </span>
                       </span>

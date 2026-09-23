@@ -38,6 +38,7 @@ import { AttachmentPanel, MedicalRecordPanel, NextTreatmentsPanel } from "./Deta
 import { MedicalCheckupModal } from "./MedicalCheckupModal";
 import { MedicalRecordModal, buildServices } from "./MedicalRecordModal";
 import { TreatmentSummaryModal } from "./TreatmentSummaryModal";
+import { app } from "@/config/paths";
 
 const RAIL = [
   { id: "checkup", label: "Medical Checkup", icon: Landmark, permission: P.CHART_EDIT },
@@ -112,7 +113,7 @@ function DetailBody({
               <div className="od-label">Patient name</div>
               <button
                 type="button"
-                onClick={() => navigate(`/patients/${appointment.patientId}`)}
+                onClick={() => navigate(app.patient(appointment.patientId))}
                 className="flex items-center gap-1.5 truncate text-[17px] font-extrabold text-ink hover:text-brand-600"
               >
                 {appointment.patientName}
@@ -268,10 +269,10 @@ function DetailBody({
 
         {["waiting", "finished"].includes(status) ? (
           <div className="grid grid-cols-2 gap-3">
-            <Button variant="secondary" onClick={() => navigate("/sales")}>
+            <Button variant="secondary" onClick={() => navigate(app.sales)}>
               Open bill
             </Button>
-            <Button variant="secondary" onClick={() => navigate(`/patients/${appointment.patientId}`)}>
+            <Button variant="secondary" onClick={() => navigate(app.patient(appointment.patientId))}>
               Patient record
             </Button>
           </div>
@@ -341,7 +342,13 @@ export function ReservationDrawer({ open, onClose, appointment, dentists = [] })
   const renderPanel = () => {
     switch (panel) {
       case "record":
-        return <MedicalRecordPanel chart={clinical?.chart ?? []} onClose={() => setPanel(null)} />;
+        return (
+          <MedicalRecordPanel
+            odontogram={clinical?.odontogram ?? null}
+            chart={clinical?.chart ?? []}
+            onClose={() => setPanel(null)}
+          />
+        );
       case "attachment":
         return <AttachmentPanel attachments={attachments} onClose={() => setPanel(null)} />;
       case "plans":
@@ -372,7 +379,17 @@ export function ReservationDrawer({ open, onClose, appointment, dentists = [] })
                 type="button"
                 title={item.label}
                 aria-label={item.label}
-                onClick={() => (isCheckup ? checkup.open() : setPanel(isActive ? null : item.id))}
+                onClick={() => {
+                  /* Both the record panel and the checkup carry a tooth chart,
+                     and the charting engine is a singleton — opening one closes
+                     the other rather than letting two live charts overlap. */
+                  if (isCheckup) {
+                    setPanel(null);
+                    checkup.open();
+                    return;
+                  }
+                  setPanel(isActive ? null : item.id);
+                }}
                 className={cn(
                   "flex h-10 w-10 items-center justify-center rounded-xl border transition",
                   isActive
@@ -406,7 +423,7 @@ export function ReservationDrawer({ open, onClose, appointment, dentists = [] })
         onClose={checkup.close}
         appointment={appointment}
         patient={patient}
-        chart={clinical?.chart ?? []}
+        odontogram={clinical?.odontogram ?? null}
         onSaved={() => setHasCheckup(true)}
       />
 

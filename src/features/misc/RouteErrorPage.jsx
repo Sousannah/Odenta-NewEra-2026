@@ -1,10 +1,11 @@
 import { isRouteErrorResponse, useNavigate, useRouteError } from "react-router-dom";
 import { AlertOctagon, RefreshCw } from "lucide-react";
-import { useAuth } from "@/auth/AuthContext";
+import { useAuthOptional } from "@/auth/AuthContext";
 import { roleHome } from "@/auth/roles";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/ui/Button";
 import NotFoundPage from "./NotFoundPage";
+import { auth } from "@/config/paths";
 
 /**
  * Route-level error boundary.
@@ -25,7 +26,11 @@ const isChunkLoadFailure = (error) =>
 export default function RouteErrorPage() {
   const error = useRouteError();
   const navigate = useNavigate();
-  const { role, isAuthenticated } = useAuth();
+  /* Optional, not required: this component is the boundary that reports a
+     failed dynamic import, and after a dev-server restart it can itself be
+     holding a stale AuthContext. An error boundary that throws reports
+     nothing. */
+  const { role, isAuthenticated } = useAuthOptional();
 
   // A thrown 404 response is a missing page, not a crash.
   if (isRouteErrorResponse(error) && error.status === 404) return <NotFoundPage />;
@@ -59,7 +64,7 @@ export default function RouteErrorPage() {
               <Button
                 variant="secondary"
                 onClick={() =>
-                  navigate(isAuthenticated ? roleHome(role) : "/sign-in", { replace: true })
+                  navigate(isAuthenticated ? roleHome(role) : auth.signIn, { replace: true })
                 }
               >
                 {isAuthenticated ? "Back to my dashboard" : "Go to sign in"}

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   CalendarPlus,
@@ -9,6 +9,7 @@ import {
   NotebookPen,
   Pill,
   Plus,
+  Save,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useAsync, useDisclosure } from "@/hooks";
@@ -27,7 +28,7 @@ import {
 import { P } from "@/auth/permissions";
 import { useAuth } from "@/auth/AuthContext";
 import { Card, CardBody, CardHeader, Caption } from "@/components/ui/Card";
-import { Tabs, TabsContent, TabsList, TabsTrigger, SegmentedControl } from "@/components/ui/Tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/Tabs";
 import { Button, IconButton } from "@/components/ui/Button";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
@@ -38,28 +39,73 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { MiniSelect } from "@/components/ui/Field";
 import { PatientAlerts, toneFor } from "@/components/shared";
 import {
-  DEFAULT_LEGEND,
   NOTATION_OPTIONS,
-  Odontogram,
-  OdontogramLegend,
   PerioChart,
   formatSurfaces,
   formatTooth,
   perioSummary,
   toothFullName,
 } from "@/components/dental";
-import { chartToFindings } from "@/features/schedule/DetailPanels";
+import {
+  ToothChart,
+  buildChartDocument,
+  readChartEntries,
+  readChartPayload,
+  toClinicEntries,
+} from "@/odontogram";
 import { PatientFormModal } from "./PatientFormModal";
 import { PrescriptionModal } from "./PrescriptionModal";
+import { app } from "@/config/paths";
 
 /* ------------------------------------------------- patient information */
 
-function InformationTab({ patient, hygiene, attachments }) {
+function InformationTab({ patient, hygiene, attachments, showClinical, canEdit, onUploaded }) {
   const risk = CARIES_RISK.find((item) => item.value === patient.cariesRisk);
+  const toast = useToast();
+  const fileInput = useRef(null);
+  const [uploading, setUploading] = useState(false);
+
+  /**
+   * Put a radiograph or a consent scan on the record.
+   *
+   * Three steps, and the bytes never touch the API: ask for a write capability
+   * scoped to one blob path, PUT straight to storage, then register what was
+   * written. A radiograph is 4-20MB and a record carries a dozen — proxying
+   * that through an API sized for JSON would mean paying for the bandwidth
+   * twice. `clinicalService.uploadAttachment` owns the sequence.
+   */
+  const upload = async (event) => {
+    const file = event.target.files?.[0];
+    /* Reset immediately so picking the same file twice still fires a change. */
+    event.target.value = "";
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      await clinicalService.uploadAttachment(patient.id, file, { kind: "Clinical photo" });
+      toast.success("Attachment added", file.name);
+      onUploaded?.();
+    } catch (cause) {
+      toast.error("Could not upload that file", cause?.message);
+    } finally {
+      setUploading(false);
+    }
+  };
 
   return (
     <div className="flex flex-col gap-5">
-      <PatientAlerts patient={patient} />
+      {/**
+       * Allergies, alerts, ASA class and medication — clinical, and gated.
+       *
+       * Belt and braces: those fields live in the `records` container, a
+       * receptionist holds `patient:view` and not `patient_clinical:view`, and
+       * the row they are served carries none of them.
+       *
+       * The client-side check is never the security boundary — it is here so
+       * the screen does not render an empty alert strip for a role that will
+       * never be given anything to put in it.
+       */}
+      {showClinical ? <PatientAlerts patient={patient} /> : null}
 
       <Card>
         <CardHeader title="General information" />
@@ -141,7 +187,35 @@ function InformationTab({ patient, hygiene, attachments }) {
       </div>
 
       <Card>
-        <CardHeader title="Attachment" subtitle={`${attachments.length} file(s)`} />
+        <CardHeader
+          title="Attachment"
+          subtitle={`${attachments.length} file(s)`}
+          action={
+            canEdit ? (
+              <>
+                <input
+                  ref={fileInput}
+                  type="file"
+                  className="hidden"
+                  /* Mirrors the server's allowlist, so an unsupported file is
+                     refused by the picker rather than by a 400 after an upload
+                     the person waited for. The server still checks. */
+                  accept="image/jpeg,image/png,image/webp,image/avif,application/pdf,application/dicom"
+                  onChange={upload}
+                />
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  loading={uploading}
+                  leftIcon={<Plus className="h-3.5 w-3.5" />}
+                  onClick={() => fileInput.current?.click()}
+                >
+                  Add file
+                </Button>
+              </>
+            ) : null
+          }
+        />
         <CardBody className="pt-3">
           {attachments.length === 0 ? (
             <EmptyState title="No attachments" className="py-10" />
@@ -306,141 +380,257 @@ function PlansTab({ plans, canApprove, onApprove }) {
 
 /* -------------------------------------------------------- medical record */
 
-function MedicalRecordTab({ chart, notation }) {
-  const [service, setService] = useState("medical");
+/**
+ * The medical record.
+ *
+ * The chart on this tab is the shared odontogram (`src/odontogram`) — the same
+ * surface the student, the supervisor and the chairside checkup use. It holds
+ * the record: what is stored is the chart's own payload, and the per-tooth
+ * timeline underneath is built from the flat entries derived from it on save.
+ *
+ * Editing is gated on `chart:edit`, so an assistant opening the record reads
+ * the same chart without being able to change it.
+ */
+function MedicalRecordTab({ patientId, chart, notation, canEdit, dentistId }) {
+  const toast = useToast();
+
+  /**
+   * The chart arrives with the record rather than being fetched again.
+   *
+   * This tab used to issue its own `GET /patients/:id/chart`, which made the
+   * patient screen a seventh request for a document the parent's single record
+   * read had already returned. Held in local state so a save can replace it
+   * without the parent refetching the whole record.
+   */
+  const [stored, setStored] = useState(chart ?? null);
+  /**
+   * Reseeded when the record is genuinely re-read, and not before.
+   *
+   * Keyed on the patient and the chart's etag rather than on the `chart` object
+   * itself: the parent builds that object inline, so a plain `[chart]`
+   * dependency fires on every parent render and would throw away whatever the
+   * clinician had charted but not yet saved. The etag only moves when the
+   * stored chart actually moves.
+   */
+  useEffect(() => setStored(chart ?? null), [patientId, chart?.version]);
+  const loading = false;
+
+  const savedPayload = useMemo(() => readChartPayload(stored), [stored]);
+  const entries = useMemo(() => readChartEntries(stored), [stored]);
+
   const [selectedTooth, setSelectedTooth] = useState(null);
+  const [dirty, setDirty] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const chartRef = useRef(null);
 
-  const filtered = useMemo(
-    () =>
-      chart.filter((entry) =>
-        service === "cosmetic"
-          ? ["restoration", "crown", "implant"].includes(entry.condition)
-          : true
-      ),
-    [chart, service]
+  useEffect(() => {
+    setSelectedTooth(null);
+    setDirty(false);
+  }, [patientId]);
+
+  const teeth = useMemo(
+    () => [...new Set(entries.map((entry) => entry.tooth))].sort((a, b) => a - b),
+    [entries]
   );
-
-  const findings = useMemo(() => chartToFindings(filtered), [filtered]);
-  const teeth = useMemo(() => [...new Set(filtered.map((entry) => entry.tooth))], [filtered]);
   const activeTooth = selectedTooth ?? teeth[0] ?? null;
-  const history = filtered
+  const history = entries
     .filter((entry) => entry.tooth === activeTooth)
     .sort((a, b) => (a.date < b.date ? 1 : -1));
 
+  const save = async () => {
+    /* Flush the chart's change debounce first, so a quick edit-then-save
+       cannot write the payload as it stood a moment ago. */
+    const payload = chartRef.current?.commit();
+    if (!payload) return;
+    setSaving(true);
+    try {
+      const derived = toClinicEntries(payload, { dentistId });
+      /**
+       * `version` is the etag this chart was read at.
+       *
+       * Echoing it lets the server refuse a save that would overwrite somebody
+       * else's — a dentist charting while an assistant records chairside is
+       * ordinary, and without the check the second save discards the first
+       * one's findings with nothing on screen to say so.
+       */
+      const document = await clinicalService.saveChart(
+        patientId,
+        buildChartDocument(payload, derived),
+        { version: stored?.version ?? null }
+      );
+      setStored(document);
+      setDirty(false);
+      toast.success("Chart saved", `${derived.length} finding(s) on the record`);
+    } catch (error) {
+      /* The one error worth wording differently: the record moved underneath
+         them, and retrying the same save would only discard the other person's
+         work a second time. */
+      if (error?.code === "concurrent_update") {
+        toast.error(
+          "Somebody else saved this chart first",
+          "Reopen the record to see their findings before charting again."
+        );
+      } else {
+        toast.error("Could not save the chart", error?.message);
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
-    <Card>
-      <CardHeader
-        title="Service"
-        action={
-          <SegmentedControl
-            value={service}
-            onChange={setService}
-            options={[
-              { value: "medical", label: "Medical" },
-              { value: "cosmetic", label: "Cosmetic" },
-            ]}
-          />
-        }
-      />
-      <CardBody className="pt-3">
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,440px)_1fr]">
-          <div className="rounded-2xl border border-slate-200 p-4">
-            <h4 className="text-center text-[15px] font-bold text-ink">Odontogram</h4>
-            <Odontogram
-              className="mt-2"
-              findings={findings}
-              notation={notation}
-              surfaceMode
-              selected={activeTooth}
-              onSelectTooth={setSelectedTooth}
-              legend={<OdontogramLegend items={DEFAULT_LEGEND} />}
+    <div className="flex flex-col gap-5">
+      <Card>
+        <CardHeader
+          title="Dental chart"
+          subtitle={
+            canEdit
+              ? "Chart per tooth, per surface and per root. Nothing is stored until you save."
+              : "Read-only — charting requires the chart:edit permission."
+          }
+          action={
+            canEdit ? (
+              <Button
+                size="sm"
+                leftIcon={<Save className="h-3.5 w-3.5" />}
+                loading={saving}
+                disabled={!dirty}
+                onClick={save}
+              >
+                Save chart
+              </Button>
+            ) : null
+          }
+        />
+        <CardBody className="pt-3">
+          {loading ? (
+            <Skeleton className="h-[520px] w-full rounded-2xl" />
+          ) : (
+            <ToothChart
+              key={patientId}
+              ref={chartRef}
+              value={savedPayload}
+              onChange={() => setDirty(true)}
+              readOnly={!canEdit}
+              enableNotes
+              enableIcdas
             />
-          </div>
+          )}
+        </CardBody>
+      </Card>
 
-          <div className="min-w-0">
-            {activeTooth ? (
-              <>
-                <div className="flex items-center gap-2.5">
-                  <span className="flex h-7 items-center gap-1.5 rounded-md bg-brand-50 px-2 text-[11px] font-bold text-brand-700">
-                    {formatTooth(activeTooth, notation)}
-                  </span>
-                  <h3 className="text-[17px] font-extrabold text-ink">
-                    {toothFullName(activeTooth)}
-                  </h3>
-                </div>
+      <Card>
+        <CardHeader
+          title="Tooth history"
+          subtitle={
+            teeth.length
+              ? `${teeth.length} charted tooth/teeth on the record`
+              : "Nothing charted yet"
+          }
+        />
+        <CardBody className="pt-3">
+          {teeth.length ? (
+            <>
+              <div className="od-scroll-x flex flex-wrap gap-1.5 overflow-x-auto pb-1">
+                {teeth.map((tooth) => (
+                  <button
+                    key={tooth}
+                    type="button"
+                    onClick={() => setSelectedTooth(tooth)}
+                    className={cn(
+                      "od-focus rounded-lg border px-2.5 py-1 text-[12px] font-bold transition",
+                      tooth === activeTooth
+                        ? "border-brand-600 bg-brand-50 text-brand-700"
+                        : "border-slate-200 bg-white text-ink-muted hover:border-slate-300"
+                    )}
+                  >
+                    {formatTooth(tooth, notation)}
+                  </button>
+                ))}
+              </div>
 
-                <ol className="mt-4 border-l-2 border-slate-100 pl-6">
-                  {history.map((entry) => {
-                    const condition = conditionByValue(entry.condition);
-                    const done = entry.status === "completed";
-                    return (
-                      <li key={entry.id} className="relative pb-5">
-                        <span
-                          className={cn(
-                            "absolute -left-[31px] top-3 h-2.5 w-2.5 rounded-full ring-4 ring-white",
-                            done ? "bg-success" : "bg-slate-300"
-                          )}
-                        />
-                        <div className="rounded-2xl border border-slate-200 p-4">
-                          <div className="flex flex-wrap items-start justify-between gap-3">
-                            <div className="flex shrink-0 flex-col items-center">
-                              <span className="text-[10.5px] font-bold uppercase text-ink-soft">
-                                {formatDate(entry.date, "MMM")}
-                              </span>
-                              <span className="text-[17px] font-extrabold text-ink">
-                                {formatDate(entry.date, "dd")}
-                              </span>
-                            </div>
+              <div className="mt-4 flex items-center gap-2.5">
+                <span className="flex h-7 items-center gap-1.5 rounded-md bg-brand-50 px-2 text-[11px] font-bold text-brand-700">
+                  {formatTooth(activeTooth, notation)}
+                </span>
+                <h3 className="text-[17px] font-extrabold text-ink">
+                  {toothFullName(activeTooth)}
+                </h3>
+              </div>
 
-                            <dl className="grid min-w-0 flex-1 grid-cols-2 gap-4 sm:grid-cols-3">
-                              <div>
-                                <dt className="od-label">Condition</dt>
-                                <dd className="mt-0.5 text-[13px] font-bold text-ink">
-                                  {condition?.label ?? entry.condition}
-                                </dd>
-                              </div>
-                              <div>
-                                <dt className="od-label">Treatment</dt>
-                                <dd className="mt-0.5 text-[13px] font-bold text-ink">
-                                  {entry.code ?? "—"}
-                                  {entry.surfaces?.length ? ` · ${formatSurfaces(entry.surfaces)}` : ""}
-                                </dd>
-                              </div>
-                              <div>
-                                <dt className="od-label">Dentist</dt>
-                                <dd className="mt-0.5 truncate text-[13px] font-bold text-ink">
-                                  {entry.dentistId ?? "—"}
-                                </dd>
-                              </div>
-                            </dl>
-
-                            <Badge tone={done ? "success" : "warning"}>
-                              {done ? "Done" : "Pending"}
-                            </Badge>
+              <ol className="mt-4 border-l-2 border-slate-100 pl-6">
+                {history.map((entry) => {
+                  const condition = conditionByValue(entry.condition);
+                  const done = entry.status === "completed";
+                  return (
+                    <li key={entry.id} className="relative pb-5">
+                      <span
+                        className={cn(
+                          "absolute -left-[31px] top-3 h-2.5 w-2.5 rounded-full ring-4 ring-white",
+                          done ? "bg-success" : "bg-slate-300"
+                        )}
+                      />
+                      <div className="rounded-2xl border border-slate-200 p-4">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div className="flex shrink-0 flex-col items-center">
+                            <span className="text-[10.5px] font-bold uppercase text-ink-soft">
+                              {formatDate(entry.date, "MMM")}
+                            </span>
+                            <span className="text-[17px] font-extrabold text-ink">
+                              {formatDate(entry.date, "dd")}
+                            </span>
                           </div>
 
-                          {entry.note ? (
-                            <p className="mt-3 flex items-start gap-2 rounded-xl bg-slate-50 px-3 py-2.5 text-[12.5px] text-ink-muted">
-                              <NotebookPen className="mt-0.5 h-3.5 w-3.5 shrink-0 text-ink-faint" />
-                              {entry.note}
-                            </p>
-                          ) : null}
+                          <dl className="grid min-w-0 flex-1 grid-cols-2 gap-4 sm:grid-cols-3">
+                            <div>
+                              <dt className="od-label">Condition</dt>
+                              <dd className="mt-0.5 text-[13px] font-bold text-ink">
+                                {condition?.label ?? entry.condition}
+                              </dd>
+                            </div>
+                            <div>
+                              <dt className="od-label">Treatment</dt>
+                              <dd className="mt-0.5 text-[13px] font-bold text-ink">
+                                {entry.code ?? "—"}
+                                {entry.surfaces?.length
+                                  ? ` · ${formatSurfaces(entry.surfaces)}`
+                                  : ""}
+                              </dd>
+                            </div>
+                            <div>
+                              <dt className="od-label">Dentist</dt>
+                              <dd className="mt-0.5 truncate text-[13px] font-bold text-ink">
+                                {entry.dentistId ?? "—"}
+                              </dd>
+                            </div>
+                          </dl>
+
+                          <Badge tone={done ? "success" : "warning"}>
+                            {done ? "Done" : "Pending"}
+                          </Badge>
                         </div>
-                      </li>
-                    );
-                  })}
-                </ol>
-              </>
-            ) : (
-              <EmptyState
-                title="Nothing charted yet"
-                description="Select a tooth on the odontogram to see its history."
-              />
-            )}
-          </div>
-        </div>
-      </CardBody>
-    </Card>
+
+                        {entry.note ? (
+                          <p className="mt-3 flex items-start gap-2 rounded-xl bg-slate-50 px-3 py-2.5 text-[12.5px] text-ink-muted">
+                            <NotebookPen className="mt-0.5 h-3.5 w-3.5 shrink-0 text-ink-faint" />
+                            {entry.note}
+                          </p>
+                        ) : null}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ol>
+            </>
+          ) : (
+            <EmptyState
+              title="Nothing charted yet"
+              description="Chart a tooth above and save to start the record."
+            />
+          )}
+        </CardBody>
+      </Card>
+    </div>
   );
 }
 
@@ -570,57 +760,103 @@ function PrescriptionsTab({ prescriptions, canWrite, onNew }) {
 export default function PatientDetailPage() {
   const { patientId } = useParams();
   const navigate = useNavigate();
-  const { can } = useAuth();
+  const { can, user } = useAuth();
   const toast = useToast();
   const [notation, setNotation] = useState("fdi");
 
   const edit = useDisclosure();
   const rx = useDisclosure();
 
-  const { data: patient, loading, refetch } = useAsync(
-    () => patientService.getPatient(patientId),
-    [patientId]
-  );
-  const { data: clinical } = useAsync(
-    () => (can(P.PATIENT_CLINICAL_VIEW) ? clinicalService.getClinicalRecord(patientId) : null),
-    [patientId]
-  );
-  const { data: appointments = [] } = useAsync(
-    () => patientService.getPatientAppointments(patientId),
-    [patientId],
-    []
-  );
-  const { data: plans = [] } = useAsync(
-    () => patientService.getPatientPlans(patientId),
-    [patientId],
-    []
-  );
-  const { data: attachments = [] } = useAsync(
-    () => patientService.getPatientAttachments(patientId),
-    [patientId],
-    []
-  );
-  const { data: prescriptions = [], refetch: refetchRx } = useAsync(
-    () => (can(P.PRESCRIPTION_VIEW) ? patientService.getPatientPrescriptions(patientId) : []),
-    [patientId],
-    []
+  const showClinical = can(P.PATIENT_CLINICAL_VIEW);
+
+  /**
+   * The whole record in one request.
+   *
+   * This used to be six: the patient, the clinical record, the appointments,
+   * the plans, the attachments and the prescriptions — six round trips and, on
+   * the server, six queries across as many partitions to paint one screen.
+   *
+   * Server-side a patient's record is a single Cosmos partition keyed by
+   * patient, which is the entire reason that container is partitioned the way
+   * it is. `getPatientRecord` reads it in one query and returns everything
+   * folded, so the screen paints once instead of six times and the tab strip's
+   * badges are populated on first render rather than filling in one by one.
+   *
+   * The desk's fallback matters as much as the fast path: a receptionist holds
+   * `patient:view` and not `patient_clinical:view`, so the bundle would be a
+   * 403 for them. They get the administrative row on its own, and every
+   * clinical tab is already hidden from them by `showClinical`.
+   */
+  const {
+    data: record,
+    loading,
+    error,
+    refetch,
+  } = useAsync(
+    () =>
+      showClinical
+        ? clinicalService.getPatientRecord(patientId)
+        : patientService.getPatient(patientId).then((row) => ({ patient: row })),
+    [patientId, showClinical]
   );
 
-  if (loading || !patient) {
+  if (loading) {
     return (
-      <div className="flex flex-col gap-4 p-6">
+      <div className="flex flex-col gap-4 p-4 sm:p-6">
         <Skeleton className="h-24 w-full" />
         <Skeleton className="h-[420px] w-full" />
       </div>
     );
   }
 
-  const showClinical = can(P.PATIENT_CLINICAL_VIEW);
+  /**
+   * A record that failed to load says so.
+   *
+   * The version this replaced showed the skeleton forever on an error, because
+   * it only checked `loading || !patient` — so a patient id that does not exist
+   * was indistinguishable from a slow network, and the screen never resolved.
+   */
+  if (error || !record?.patient) {
+    return (
+      <div className="p-6">
+        <EmptyState
+          title="Could not open this patient"
+          description={error?.message ?? "That patient is not on file at this practice."}
+          className="py-16"
+        />
+      </div>
+    );
+  }
+
+  const {
+    patient,
+    appointments = [],
+    visits = [],
+    plans = [],
+    attachments = [],
+    prescriptions = [],
+  } = record;
+
+  /* The bundle calls the visit history `visits`; the granular endpoint the desk
+     falls back to called it `appointments`. Both are accepted so neither
+     caller has to know which shape it got. */
+  const visitHistory = visits.length ? visits : appointments;
+  /**
+   * The badge says "20+" rather than "20" when the list is a page.
+   *
+   * The visit history is the only unbounded part of a record, so the bundle
+   * caps it — and a count rendered from a capped list is not a total. Showing
+   * it as one is the quiet kind of wrong that survives review: it looks
+   * plausible for every patient until somebody with a long history counts.
+   */
+  const visitBadge = record.visitsTruncated ? `${visitHistory.length}+` : visitHistory.length;
+  const clinical = record;
+  const refetchRx = refetch;
 
   return (
     <div className="flex flex-col gap-5 px-6 pb-6 pt-5">
       <nav className="flex items-center gap-2 text-[13px]">
-        <Link to="/patients" className="font-semibold text-ink-muted hover:text-brand-600">
+        <Link to={app.patients} className="font-semibold text-ink-muted hover:text-brand-600">
           Patient list
         </Link>
         <ChevronRight className="h-3.5 w-3.5 text-ink-faint" />
@@ -642,7 +878,13 @@ export default function PatientDetailPage() {
                 {patient.status}
               </Badge>
             </div>
-            {patient.note ? (
+            {/**
+             * The practice note is a clinical observation — "check BP before
+             * any surgical procedure" — so it is gated like the alert strip.
+             * A receptionist is never served it, so this only decides whether
+             * the block is rendered at all.
+             */}
+            {showClinical && patient.note ? (
               <div className="mt-2 flex max-w-[520px] items-center gap-2 rounded-xl border border-slate-200 px-3 py-2">
                 <NotebookPen className="h-3.5 w-3.5 shrink-0 text-ink-soft" />
                 <span className="min-w-0 flex-1 truncate text-[12.5px] text-ink-muted">
@@ -676,7 +918,7 @@ export default function PatientDetailPage() {
           </MiniSelect>
 
           {can(P.APPOINTMENT_CREATE) ? (
-            <Button leftIcon={<CalendarPlus className="h-4 w-4" />} onClick={() => navigate("/schedule?new=1")}>
+            <Button leftIcon={<CalendarPlus className="h-4 w-4" />} onClick={() => navigate(`${app.schedule}?new=1`)}>
               Create Appointment
             </Button>
           ) : null}
@@ -704,7 +946,7 @@ export default function PatientDetailPage() {
       <Tabs defaultValue="info">
         <TabsList>
           <TabsTrigger value="info">Patient Information</TabsTrigger>
-          <TabsTrigger value="history" badge={appointments.length}>
+          <TabsTrigger value="history" badge={visitBadge}>
             Appointment History
           </TabsTrigger>
           <TabsTrigger value="plans" badge={plans.length}>
@@ -720,11 +962,18 @@ export default function PatientDetailPage() {
         </TabsList>
 
         <TabsContent value="info" className="pt-5">
-          <InformationTab patient={patient} hygiene={clinical?.hygiene} attachments={attachments} />
+          <InformationTab
+            patient={patient}
+            hygiene={clinical?.hygiene}
+            attachments={attachments}
+            showClinical={showClinical}
+            canEdit={can(P.PATIENT_CLINICAL_EDIT)}
+            onUploaded={refetch}
+          />
         </TabsContent>
 
         <TabsContent value="history" className="pt-5">
-          <HistoryTab appointments={appointments} onOpen={() => navigate("/schedule")} />
+          <HistoryTab appointments={visitHistory} onOpen={() => navigate(app.schedule)} />
         </TabsContent>
 
         <TabsContent value="plans" className="pt-5">
@@ -737,7 +986,17 @@ export default function PatientDetailPage() {
 
         {showClinical ? (
           <TabsContent value="record" className="pt-5">
-            <MedicalRecordTab chart={clinical?.chart ?? []} notation={notation} />
+            <MedicalRecordTab
+              patientId={patientId}
+              chart={{
+                odontogram: record.odontogram ?? null,
+                chart: record.chart ?? [],
+                version: record.chartVersion ?? null,
+              }}
+              notation={notation}
+              canEdit={can(P.CHART_EDIT)}
+              dentistId={user?.staffId ?? null}
+            />
           </TabsContent>
         ) : null}
 

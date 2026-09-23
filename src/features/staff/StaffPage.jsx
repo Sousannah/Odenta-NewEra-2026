@@ -197,7 +197,7 @@ export default function StaffPage() {
                 value={query}
                 onChange={setQuery}
                 placeholder="Search staff…"
-                className="w-[320px]"
+                className="w-full sm:w-[320px]"
               />
             }
           />

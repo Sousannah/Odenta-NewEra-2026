@@ -1,10 +1,11 @@
 import { cn } from "@/lib/cn";
+import { chart } from "@/theme/tokens";
 
 /**
  * Ranked horizontal bars — used on the Report screen.
  * data: [{ name, value }]
  */
-export function HorizontalBars({ data, color = "#4B66E9", className, valueFormatter }) {
+export function HorizontalBars({ data, color = chart.primary, className, valueFormatter }) {
   const max = Math.max(...data.map((item) => item.value), 1);
   return (
     <div className={cn("flex flex-col gap-3.5", className)}>

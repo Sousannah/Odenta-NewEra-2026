@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Download, Plus, Truck } from "lucide-react";
+import { Download, PackageCheck, Plus, Truck } from "lucide-react";
 import { useAsync, useDisclosure } from "@/hooks";
 import { useToast } from "@/components/ui/Toast";
 import { financeService } from "@/services";
@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/Badge";
 import { SearchInput } from "@/components/ui/Misc";
 import { MiniSelect, Field, Input, Select } from "@/components/ui/Field";
 import { Modal } from "@/components/ui/Modal";
-import { PageHeader, StatCard, Toolbar, toneFor } from "@/components/shared";
+import { PageHeader, StatCard, StatGrid, Toolbar, toneFor } from "@/components/shared";
 
 function PurchaseFormModal({ open, onClose }) {
   const toast = useToast();
@@ -127,7 +127,7 @@ export default function PurchasesPage() {
   ];
 
   return (
-    <div className="flex flex-col gap-5 p-6">
+    <div className="flex flex-col gap-4 p-4 sm:gap-5 sm:p-6">
       <PageHeader
         title="Purchases"
         description="Track vendor orders from draft through delivery."
@@ -145,7 +145,7 @@ export default function PurchasesPage() {
         }
       />
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <StatGrid cols={3}>
         <StatCard
           label="Total spend"
           value={formatMoney(totalSpend)}
@@ -157,8 +157,11 @@ export default function PurchasesPage() {
           tone="warning"
           icon={<Truck className="h-5 w-5" />}
         />
-        <StatCard label="Orders this period" value={purchases.length} tone="success" />
-      </div>
+        <StatCard
+          label="Orders this period" value={purchases.length} tone="success"
+          icon={<PackageCheck className="h-5 w-5" />}
+        />
+      </StatGrid>
 
       <Toolbar
         left={
@@ -167,7 +170,7 @@ export default function PurchasesPage() {
               value={query}
               onChange={setQuery}
               placeholder="Search vendor or order…"
-              className="w-[300px]"
+              className="w-full sm:w-[300px]"
             />
             <MiniSelect
               className="h-10"

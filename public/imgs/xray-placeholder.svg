@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" width="400" height="300" role="img" aria-label="Radiograph placeholder">
+  <rect width="400" height="300" fill="#0b1418"/>
+  <g fill="none" stroke="#7d9aa6" stroke-width="1.5" opacity="0.55">
+    <path d="M40 190 q30 -70 60 0 q30 -70 60 0 q30 -70 60 0 q30 -70 60 0 q30 -70 60 0"/>
+    <path d="M40 190 h320"/>
+  </g>
+  <g fill="#c9dde5" opacity="0.75">
+    <ellipse cx="100" cy="150" rx="22" ry="34"/>
+    <ellipse cx="160" cy="150" rx="22" ry="34"/>
+    <ellipse cx="220" cy="150" rx="22" ry="34"/>
+    <ellipse cx="280" cy="150" rx="22" ry="34"/>
+  </g>
+  <text x="200" y="272" fill="#5b7987" font-family="system-ui, sans-serif" font-size="14" text-anchor="middle">Radiograph preview</text>
+</svg>

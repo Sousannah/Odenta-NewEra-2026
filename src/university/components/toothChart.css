@@ -1,0 +1,148 @@
+/**
+ * The student clinic's tooth chart.
+ *
+ * A grid rather than an arch: this is the paper chart the faculty teaches on,
+ * with each tooth's five surfaces drawn underneath (upper) or above (lower) it
+ * so the diagram sits between the tooth and the midline the way it does on the
+ * printed sheet. Only geometry lives here — every colour comes from the theme.
+ */
+
+.od-teeth-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  min-width: 900px;
+  padding: 8px 4px 4px;
+}
+
+.od-arch {
+  display: grid;
+  grid-template-columns: repeat(16, minmax(0, 1fr));
+  gap: 4px;
+  justify-content: center;
+}
+
+.od-tooth-slot {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+}
+
+.od-tooth-slot.is-upper .od-tooth-surfaces {
+  order: 2;
+  margin-top: 6px;
+}
+
+.od-tooth-slot.is-lower .od-tooth-surfaces {
+  order: 0;
+  margin-bottom: 6px;
+}
+
+.od-tooth {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 100%;
+  padding: 4px 2px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: transform 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.od-tooth:hover {
+  transform: translateY(-2px);
+  background-color: var(--od-primary-soft);
+  z-index: 1;
+}
+
+.od-tooth.is-selected {
+  border-color: var(--od-primary);
+  background-color: var(--od-primary-soft);
+}
+
+.od-tooth.is-charted::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--tooth-dot, var(--od-primary));
+}
+
+/**
+ * A fixed box, not a fixed width.
+ *
+ * The tooth PNGs differ in aspect ratio — a molar is squat, a canine long — so
+ * sizing by width alone leaves the numbers and surface diagrams on a ragged
+ * baseline. Anchoring each image to the bottom of a fixed box makes the row
+ * read as an arch, which is the whole point of laying it out this way.
+ */
+.od-tooth-image {
+  width: 100%;
+  max-width: 34px;
+  height: 40px;
+  object-fit: contain;
+  object-position: bottom;
+}
+
+.od-tooth-slot.is-lower .od-tooth-image {
+  object-position: top;
+}
+
+.od-tooth-number {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--od-text-muted);
+  letter-spacing: 0.02em;
+}
+
+.od-tooth-surfaces {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.od-tooth-surfaces svg {
+  width: 100%;
+  max-width: 42px;
+  height: auto;
+}
+
+.od-tooth-surfaces .od-surface {
+  stroke: var(--od-line);
+  stroke-width: 6;
+  transition: fill 0.15s ease;
+}
+
+/* In the detail dialog the diagram is the control, so it takes a pointer. */
+.od-tooth-surfaces.is-interactive svg {
+  max-width: 168px;
+}
+
+.od-tooth-surfaces.is-interactive .od-surface {
+  cursor: pointer;
+  stroke: var(--od-text-muted);
+  stroke-width: 5;
+}
+
+.od-tooth-surfaces.is-interactive .od-surface:hover {
+  fill: var(--od-primary-soft);
+}
+
+@media (max-width: 768px) {
+  .od-teeth-chart {
+    min-width: 760px;
+  }
+
+  .od-tooth-image {
+    max-width: 26px;
+    height: 32px;
+  }
+}

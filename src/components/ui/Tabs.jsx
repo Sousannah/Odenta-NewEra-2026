@@ -19,11 +19,20 @@ export function Tabs({ defaultValue, value, onValueChange, className, children }
   );
 }
 
+/**
+ * The tab strip.
+ *
+ * Scrolls sideways rather than wrapping or overflowing its page: six rotation
+ * tabs do not fit a phone, and a second row of tabs reads as a second control.
+ */
 export function TabsList({ className, children }) {
   return (
     <div
       role="tablist"
-      className={cn("flex items-center gap-6 border-b border-slate-200", className)}
+      className={cn(
+        "od-scroll-x flex items-center gap-5 overflow-x-auto border-b border-slate-200 sm:gap-6",
+        className
+      )}
     >
       {children}
     </div>
@@ -40,7 +49,7 @@ export function TabsTrigger({ value, className, children, badge }) {
       aria-selected={selected}
       onClick={() => ctx.setActive(value)}
       className={cn(
-        "od-focus relative -mb-px flex items-center gap-2 border-b-2 px-1 pb-3 pt-2 text-sm font-semibold transition-colors",
+        "od-focus relative -mb-px flex shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-1 pb-3 pt-2 text-sm font-semibold transition-colors",
         selected
           ? "border-brand-600 text-brand-700"
           : "border-transparent text-ink-muted hover:text-ink",
@@ -76,7 +85,7 @@ export function TabsContent({ value, className, children }) {
 export function SegmentedControl({ options, value, onChange, className, size = "md" }) {
   const pad = size === "sm" ? "px-3 py-1 text-[12px]" : "px-4 py-1.5 text-[13px]";
   return (
-    <div className={cn("inline-flex rounded-xl bg-slate-100 p-1", className)}>
+    <div className={cn("od-scroll-x inline-flex max-w-full overflow-x-auto rounded-xl bg-slate-100 p-1", className)}>
       {options.map((option) => {
         const key = option.value ?? option;
         const label = option.label ?? option;
@@ -87,7 +96,7 @@ export function SegmentedControl({ options, value, onChange, className, size = "
             type="button"
             onClick={() => onChange?.(key)}
             className={cn(
-              "od-focus rounded-lg font-semibold transition",
+              "od-focus shrink-0 whitespace-nowrap rounded-lg font-semibold transition",
               pad,
               selected ? "bg-white text-ink shadow-sm" : "text-ink-soft hover:text-ink"
             )}
